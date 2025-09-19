@@ -1105,7 +1105,7 @@ sequenceDiagram
 flowchart TD
     MARKETPLACE[Azure DevOps Marketplace]
     SEARCH[Search for your extension]
-    INSTALL[Click "Get it free"]
+    INSTALL[Click Get it free]
     ORG[Select organization]
     CONFIRM[Confirm installation]
     READY[Extension ready to use]
@@ -1699,4 +1699,5 @@ You've successfully created, built, and published your first Azure DevOps extens
 - **Community:** [https://developercommunity.visualstudio.com/](https://developercommunity.visualstudio.com/)
 
 **Happy coding! 🚀**
+
 
