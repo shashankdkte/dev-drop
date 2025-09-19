@@ -361,7 +361,6 @@ module.exports = {
 ### Step 7: Create Extension Manifest
 
 Create `vss-extension.json`:
-
 ```json
 {
   "manifestVersion": 1,
@@ -418,6 +417,7 @@ Create `vss-extension.json`:
 **Important Notes:**
 - **Extension ID:** `hello-world-extension-shakz` - This must be unique across the entire Azure DevOps Marketplace. Choose a unique identifier that includes your name or organization.
 - **Overview File:** The `content` section and `overview.md` file in the `files` array are required for marketplace listings.
+- **id** Make sure this is unique across marketplace
 
 ### Step 8: Create Source Directory
 
@@ -1699,5 +1699,6 @@ You've successfully created, built, and published your first Azure DevOps extens
 - **Community:** [https://developercommunity.visualstudio.com/](https://developercommunity.visualstudio.com/)
 
 **Happy coding! 🚀**
+
 
 
