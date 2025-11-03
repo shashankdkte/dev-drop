@@ -32,11 +32,12 @@ graph TB
         A2[MSAL Angular<br/>@azure/msal-angular]
         A3[HTTP Interceptor<br/>MsalInterceptor]
         A4[Route Guard<br/>MsalGuard]
+        Cache[Local Storage<br/>msal.account.keys<br/>msal.idtoken<br/>msal.accesstoken]
         A --> A1
         A --> A2
         A2 --> A3
         A2 --> A4
-        A1 -->|"Token Cache<br/>(LocalStorage)"| Cache[Local Storage<br/>msal.account.keys<br/>msal.idtoken<br/>msal.accesstoken]
+        A1 -->|"Token Cache<br/>(LocalStorage)"| Cache
     end
 
     subgraph "Microsoft Identity Platform"
