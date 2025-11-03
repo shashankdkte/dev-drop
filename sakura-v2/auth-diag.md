@@ -37,15 +37,15 @@ graph TB
         A --> A2
         A2 --> A3
         A2 --> A4
-        A1 -->|"Token Cache<br/>(LocalStorage)"| Cache
+        A1 -->|Token Cache LocalStorage| Cache
     end
 
     subgraph "Microsoft Identity Platform"
         B[Azure AD<br/>login.microsoftonline.com]
         B1[Tenant: dentsu<br/>6e8992ec-76d5-4ea5-8eae-b0c5e558749a]
-        B2[Frontend SPA App Registration<br/>Client ID: [SPA-CLIENT-ID]]
-        B3[Backend API App Registration<br/>Client ID: [API-CLIENT-ID]]
-        B4[API Scope<br/>api://[API-CLIENT-ID]/access_as_user]
+        B2[Frontend SPA App Registration<br/>Client ID: SPA-CLIENT-ID]
+        B3[Backend API App Registration<br/>Client ID: API-CLIENT-ID]
+        B4[API Scope<br/>api://API-CLIENT-ID/access_as_user]
         B --> B1
         B1 --> B2
         B1 --> B3
@@ -58,7 +58,7 @@ graph TB
         C2[Token Validation<br/>JwtSecurityTokenHandler]
         C3[ClaimsPrincipal<br/>User.Identity]
         C4[Authorization Policies<br/>Requester, Approver, Admin]
-        C5[Controllers<br/>[Authorize] attributes]
+        C5[Controllers<br/>Authorize attributes]
         C --> C1
         C1 --> C2
         C2 --> C3
@@ -78,11 +78,11 @@ graph TB
         D --> D4
     end
 
-    A3 -->|"HTTPS Request<br/>Authorization: Bearer {token}"| C
-    A2 -->|"Redirect<br/>OAuth 2.0 + PKCE"| B
-    B -->|"ID Token + Access Token<br/>Authorization Code"| A1
-    C2 -->|"Validate Token<br/>Check signature, expiry"| B
-    C5 -->|"Query User Roles<br/>Check database"| D
+    A3 -->|HTTPS Request<br/>Authorization: Bearer token| C
+    A2 -->|Redirect<br/>OAuth 2.0 + PKCE| B
+    B -->|ID Token + Access Token<br/>Authorization Code| A1
+    C2 -->|Validate Token<br/>Check signature, expiry| B
+    C5 -->|Query User Roles<br/>Check database| D
 
     style A fill:#e1f5ff
     style B fill:#0078d4,color:#fff
@@ -235,9 +235,9 @@ graph TD
     
     D --> E[Read environment.ts]
     E --> E1[azureAd.clientId<br/>Frontend SPA Client ID]
-    E --> E2[azureAd.authority<br/>https://login.microsoftonline.com/[tenant]]
+    E --> E2[azureAd.authority<br/>https://login.microsoftonline.com/tenant-id]
     E --> E3[azureAd.redirectUri<br/>http://localhost:4200]
-    E --> E4[azureAd.scopes<br/>api://[API-CLIENT-ID]/access_as_user]
+    E --> E4[azureAd.scopes<br/>api://API-CLIENT-ID/access_as_user]
     
     E1 --> F[Create PublicClientApplication]
     E2 --> F
@@ -369,7 +369,7 @@ graph TB
         L1 -->|No| N
         
         N --> O[Generate Authorization Code]
-        O --> O1[Code: [random-guid]]
+        O --> O1[Code: random-guid]
         O --> O2[Expires in: 10 minutes]
         O --> O3[Single-use only]
         O --> O4[Bound to: code_verifier]
@@ -379,7 +379,7 @@ graph TB
         O3 --> P
         O4 --> P
         
-        P --> Q[Redirect URL:<br/>http://localhost:4200?<br/>code=[auth-code]&<br/>state=[state]&<br/>session_state=[session]]
+        P --> Q[Redirect URL:<br/>http://localhost:4200?<br/>code=auth-code<br/>state=state<br/>session_state=session]
     end
     
     subgraph "Frontend: Token Exchange"
@@ -395,14 +395,14 @@ graph TB
         S -->|No| Error4[Error: State mismatch<br/>CSRF attack detected]
         S -->|Yes| T[Call Token Endpoint]
         
-        T --> U[POST https://login.microsoftonline.com/<br/>[tenant-id]/oauth2/v2.0/token]
+        T --> U[POST https://login.microsoftonline.com/<br/>tenant-id/oauth2/v2.0/token]
         
         U --> U1[grant_type: authorization_code]
-        U --> U2[code: [auth-code]]
-        U --> U3[client_id: [SPA-CLIENT-ID]]
+        U --> U2[code: auth-code]
+        U --> U3[client_id: SPA-CLIENT-ID]
         U --> U4[redirect_uri: http://localhost:4200]
-        U --> U5[code_verifier: [original-verifier]]
-        U --> U6[scope: api://[API-CLIENT-ID]/access_as_user]
+        U --> U5[code_verifier: original-verifier]
+        U --> U6[scope: api://API-CLIENT-ID/access_as_user]
     end
     
     subgraph "Azure AD: Token Generation"
@@ -480,8 +480,8 @@ graph TD
     F1 --> G[Read appsettings.json]
     G --> G1[AzureAd.Instance: login.microsoftonline.com]
     G --> G2[AzureAd.TenantId: 6e8992ec-...]
-    G --> G3[AzureAd.ClientId: [API-CLIENT-ID]]
-    G --> G4[AzureAd.Audience: api://[API-CLIENT-ID]]
+    G --> G3[AzureAd.ClientId: API-CLIENT-ID]
+    G --> G4[AzureAd.Audience: api://API-CLIENT-ID]
     
     G1 --> H[Configure TokenValidationParameters]
     G2 --> H
@@ -492,8 +492,8 @@ graph TD
     H --> H2[ValidateAudience: true]
     H --> H3[ValidateLifetime: true]
     H --> H4[ValidateIssuerSigningKey: true]
-    H --> H5[ValidIssuer: https://login.microsoftonline.com/[tenant]/v2.0]
-    H --> H6[ValidAudience: api://[API-CLIENT-ID]]
+    H --> H5[ValidIssuer: https://login.microsoftonline.com/tenant-id/v2.0]
+    H --> H6[ValidAudience: api://API-CLIENT-ID]
     
     F2 --> I[Parse JWT Token]
     I --> I1[Split token: header.payload.signature]
@@ -606,9 +606,9 @@ graph TB
         A[User Logs In]
         A --> B[Azure AD Token Claims]
         B --> B1[preferred_username: user@dentsu.com]
-        B --> B2[oid: [object-id]]
-        B --> B3[groups: [group-ids]]
-        B --> B4[roles: [role-ids]]
+        B --> B2[oid: object-id]
+        B --> B3[groups: group-ids]
+        B --> B4[roles: role-ids]
     end
     
     subgraph "Backend: Token Validation"
@@ -625,7 +625,7 @@ graph TB
         E -->|No| F[INSERT new user]
         E -->|Yes| G[Get UserId]
         
-        F --> F1[Email: user@dentsu.com<br/>Name: John Doe<br/>ObjectId: [oid]<br/>CreatedDate: NOW]
+        F --> F1[Email: user@dentsu.com<br/>Name: John Doe<br/>ObjectId: oid<br/>CreatedDate: NOW]
         F1 --> G
         
         G --> H[User ID: 12345]
