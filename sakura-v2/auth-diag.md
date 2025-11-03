@@ -1,2183 +1,1210 @@
-# Azure AD + MSAL Integration - Complete Implementation Checklist
+# Azure AD + MSAL Integration - Detailed Architecture Diagrams
 
-> **Purpose**: End-to-end implementation guide with verification at every step  
-> **Estimated Time**: 16-20 hours total  
-> **Status**: Ready to begin  
-> **Date Started**: [Fill in when you start]
-
----
-
-## 📋 Pre-Flight Checklist
-
-Before starting, verify you have:
-
-- [ ] **Azure Portal Access**: Can log in to https://portal.azure.com
-- [ ] **App Registration Permissions**: Can create new app registrations in Azure AD
-- [ ] **Tenant Information**: Know your Azure AD tenant ID (from Image 1: `6e8992ec-76d5-4ea5-8eae-b0c5e558749a`)
-- [ ] **Backend Running**: Can run backend locally (`dotnet run`)
-- [ ] **Frontend Running**: Can run frontend locally (`npm start`)
-- [ ] **VS Code/Visual Studio**: Development environment ready
-- [ ] **Git**: All current changes committed (checkpoint for rollback)
-
-### ✅ Checkpoint: Pre-Flight
-```bash
-# Verify backend compiles
-cd BE/Sakura_Backend/SakuraV2Api/SakuraV2Api
-dotnet build
-# Expected: Build succeeded. 0 Error(s)
-
-# Verify frontend compiles
-cd FE/application
-npm install
-npm run build
-# Expected: ✔ Built successfully
-```
-
-**🔍 Debug Log Expected**:
-```
-Backend: Build succeeded
-Frontend: Application bundle generation complete
-Status: ✅ Ready to proceed
-```
+> **Purpose**: Comprehensive visual documentation of how Azure AD authentication works in Sakura V2  
+> **Status**: Complete technical diagrams  
+> **Date**: November 2025
 
 ---
 
-## 🏗️ PHASE 1: Azure AD Setup (2-3 hours)
+## 📊 Table of Contents
 
-### Step 1.1: Create Backend API App Registration
-
-- [ ] Open Azure Portal: https://portal.azure.com
-- [ ] Navigate to: **Azure Active Directory** > **App registrations**
-- [ ] Click **+ New registration**
-- [ ] Fill in details:
-  - **Name**: `Sakura V2 API`
-  - **Supported account types**: `Accounts in this organizational directory only (dentsu only)`
-  - **Redirect URI**: Leave blank (API doesn't need redirect)
-- [ ] Click **Register**
-- [ ] **COPY** the following values (save to notepad):
-  - `Application (client) ID`: _____________________
-  - `Directory (tenant) ID`: _____________________
-
-### ✅ Checkpoint 1.1: API App Registration Created
-```
-Expected in Azure Portal:
-- App name: "Sakura V2 API" visible in app registrations list
-- Status: Enabled
-- Type: Web API
-```
-
-**🔍 Debug Log**:
-```
-Azure AD App Registration Created:
-  Name: Sakura V2 API
-  Client ID: [32 character GUID]
-  Tenant ID: 6e8992ec-76d5-4ea5-8eae-b0c5e558749a
-  Status: ✅ Registered
-```
+1. [High-Level Architecture Overview](#1-high-level-architecture-overview)
+2. [Complete Authentication Flow](#2-complete-authentication-flow)
+3. [Frontend MSAL Initialization](#3-frontend-msal-initialization)
+4. [Microsoft Identity Platform Flow](#4-microsoft-identity-platform-flow)
+5. [Backend Token Validation](#5-backend-token-validation)
+6. [Role Management & Authorization](#6-role-management--authorization)
+7. [API Request with Token](#7-api-request-with-token)
+8. [User Provisioning Flow](#8-user-provisioning-flow)
+9. [Token Refresh Flow](#9-token-refresh-flow)
+10. [Logout Flow](#10-logout-flow)
+11. [Multi-Tab Session Management](#11-multi-tab-session-management)
 
 ---
 
-### Step 1.2: Expose API (Create Scope)
+## 1. High-Level Architecture Overview
 
-- [ ] In your **Sakura V2 API** app registration
-- [ ] Navigate to: **Expose an API** (left sidebar)
-- [ ] Click **+ Add a scope**
-- [ ] **Application ID URI**: Click **Save** (accepts default: `api://[client-id]`)
-- [ ] Fill in scope details:
-  - **Scope name**: `access_as_user`
-  - **Who can consent**: `Admins and users`
-  - **Admin consent display name**: `Access Sakura V2 API`
-  - **Admin consent description**: `Allows the app to access Sakura V2 API on behalf of the signed-in user`
-  - **User consent display name**: `Access Sakura V2`
-  - **User consent description**: `Allows Sakura to access resources on your behalf`
-  - **State**: `Enabled`
-- [ ] Click **Add scope**
-- [ ] **COPY** the full scope value: `api://[client-id]/access_as_user`
+```mermaid
+graph TB
+    subgraph "Browser"
+        A[Angular SPA<br/>localhost:4200]
+        A1[MSAL Browser<br/>@azure/msal-browser]
+        A2[MSAL Angular<br/>@azure/msal-angular]
+        A3[HTTP Interceptor<br/>MsalInterceptor]
+        A4[Route Guard<br/>MsalGuard]
+        A --> A1
+        A --> A2
+        A2 --> A3
+        A2 --> A4
+        A1 -->|"Token Cache<br/>(LocalStorage)"| Cache[Local Storage<br/>msal.account.keys<br/>msal.idtoken<br/>msal.accesstoken]
+    end
 
-### ✅ Checkpoint 1.2: API Scope Exposed
-```
-Expected in Azure Portal:
-- Expose an API section shows:
-  - Application ID URI: api://[your-client-id]
-  - Scopes: access_as_user (Enabled)
-```
+    subgraph "Microsoft Identity Platform"
+        B[Azure AD<br/>login.microsoftonline.com]
+        B1[Tenant: dentsu<br/>6e8992ec-76d5-4ea5-8eae-b0c5e558749a]
+        B2[Frontend SPA App Registration<br/>Client ID: [SPA-CLIENT-ID]]
+        B3[Backend API App Registration<br/>Client ID: [API-CLIENT-ID]]
+        B4[API Scope<br/>api://[API-CLIENT-ID]/access_as_user]
+        B --> B1
+        B1 --> B2
+        B1 --> B3
+        B3 --> B4
+    end
 
-**🔍 Debug Log**:
-```
-API Scope Created:
-  Application ID URI: api://[client-id]
-  Scope Name: access_as_user
-  State: Enabled
-  Status: ✅ Scope ready for client apps
+    subgraph "Backend API"
+        C[ASP.NET Core 8.0 API<br/>localhost:7238]
+        C1[Microsoft.Identity.Web<br/>JwtBearerAuthentication]
+        C2[Token Validation<br/>JwtSecurityTokenHandler]
+        C3[ClaimsPrincipal<br/>User.Identity]
+        C4[Authorization Policies<br/>Requester, Approver, Admin]
+        C5[Controllers<br/>[Authorize] attributes]
+        C --> C1
+        C1 --> C2
+        C2 --> C3
+        C3 --> C4
+        C4 --> C5
+    end
+
+    subgraph "Sakura Database"
+        D[(SQL Server)]
+        D1[core.Users<br/>User info cache]
+        D2[sec.OLSApprovers<br/>Organization approvers]
+        D3[sec.RLSApprovers<br/>Regional approvers]
+        D4[core.Workspaces<br/>Workspace ownership]
+        D --> D1
+        D --> D2
+        D --> D3
+        D --> D4
+    end
+
+    A3 -->|"HTTPS Request<br/>Authorization: Bearer {token}"| C
+    A2 -->|"Redirect<br/>OAuth 2.0 + PKCE"| B
+    B -->|"ID Token + Access Token<br/>Authorization Code"| A1
+    C2 -->|"Validate Token<br/>Check signature, expiry"| B
+    C5 -->|"Query User Roles<br/>Check database"| D
+
+    style A fill:#e1f5ff
+    style B fill:#0078d4,color:#fff
+    style C fill:#68217a,color:#fff
+    style D fill:#00a4ef,color:#fff
 ```
 
 ---
 
-### Step 1.3: Create Frontend SPA App Registration
-
-- [ ] Back to: **Azure Active Directory** > **App registrations**
-- [ ] Click **+ New registration**
-- [ ] Fill in details:
-  - **Name**: `Sakura V2 Frontend`
-  - **Supported account types**: `Accounts in this organizational directory only (dentsu only)`
-  - **Redirect URI**: 
-    - Platform: `Single-page application (SPA)`
-    - URI: `http://localhost:4200`
-- [ ] Click **Register**
-- [ ] **COPY** the following values:
-  - `Application (client) ID`: _____________________
-  - `Directory (tenant) ID`: _____________________ (same as before)
-
-### ✅ Checkpoint 1.3: Frontend App Registration Created
-```
-Expected in Azure Portal:
-- App name: "Sakura V2 Frontend" visible in app registrations list
-- Platform: Single-page application
-- Redirect URI: http://localhost:4200
-```
-
-**🔍 Debug Log**:
-```
-Frontend App Registration Created:
-  Name: Sakura V2 Frontend
-  Client ID: [32 character GUID]
-  Platform: SPA
-  Redirect URI: http://localhost:4200
-  Status: ✅ Registered
-```
-
----
-
-### Step 1.4: Add API Permissions to Frontend App
-
-- [ ] In your **Sakura V2 Frontend** app registration
-- [ ] Navigate to: **API permissions** (left sidebar)
-- [ ] Click **+ Add a permission**
-- [ ] Click **My APIs** tab
-- [ ] Select **Sakura V2 API**
-- [ ] Check: `access_as_user`
-- [ ] Click **Add permissions**
-- [ ] Click **Grant admin consent for [your tenant]** (⚠️ Important!)
-- [ ] Confirm **Yes**
-
-### ✅ Checkpoint 1.4: Permissions Granted
-```
-Expected in Azure Portal:
-- API permissions section shows:
-  ✅ access_as_user (Granted for [tenant])
-  Status: Green checkmark
-```
-
-**🔍 Debug Log**:
-```
-API Permissions Configured:
-  Frontend App: Sakura V2 Frontend
-  Can Access: Sakura V2 API
-  Scope: access_as_user
-  Admin Consent: ✅ Granted
-  Status: ✅ Ready to authenticate
-```
-
----
-
-### Step 1.5: Add Production Redirect URIs (Optional for now)
-
-⚠️ **Skip this for local development. Come back later for production.**
-
-- [ ] When deploying to Azure, add production URIs:
-  - `https://your-app.azurestaticapps.net`
-  - `https://sakura.dentsu.com` (if custom domain)
-
----
-
-### Step 1.6: Document Your Azure AD Configuration
-
-Create a file: `docs/AZURE-AD-CONFIG.md` with your values:
-
-```markdown
-# Azure AD Configuration
-
-## Backend API App
-- Application (client) ID: [PASTE YOUR VALUE]
-- Directory (tenant) ID: 6e8992ec-76d5-4ea5-8eae-b0c5e558749a
-- Application ID URI: api://[YOUR-API-CLIENT-ID]
-- Scope: api://[YOUR-API-CLIENT-ID]/access_as_user
-
-## Frontend SPA App
-- Application (client) ID: [PASTE YOUR VALUE]
-- Directory (tenant) ID: 6e8992ec-76d5-4ea5-8eae-b0c5e558749a
-- Redirect URI: http://localhost:4200
-```
-
-- [ ] Create the file and save your values
-- [ ] ⚠️ **DO NOT commit secrets to Git** (Client IDs are OK, secrets are NOT)
-
-### ✅ Checkpoint: Phase 1 Complete
-
-**Verification**:
-- [ ] Backend API app registered ✅
-- [ ] API scope exposed ✅
-- [ ] Frontend SPA app registered ✅
-- [ ] Permissions granted with admin consent ✅
-- [ ] Configuration documented ✅
-
-**🔍 Debug Log Expected**:
-```
-=== PHASE 1 COMPLETE ===
-Azure AD Configuration:
-  ✅ Backend API registered
-  ✅ Frontend SPA registered
-  ✅ API permissions granted
-  ✅ Admin consent obtained
-  
-Ready for Phase 2: Backend Implementation
-```
-
----
-
-## 🔧 PHASE 2: Backend Implementation (4-6 hours)
-
-### Step 2.1: Install Required NuGet Packages
-
-```bash
-cd BE/Sakura_Backend/SakuraV2Api/SakuraV2Api
-```
-
-- [ ] Install packages:
-```bash
-dotnet add package Microsoft.Identity.Web --version 2.15.2
-dotnet add package Microsoft.Identity.Web.MicrosoftGraph --version 2.15.2
-```
-
-- [ ] Verify installation:
-```bash
-dotnet list package | findstr Microsoft.Identity
-```
-
-### ✅ Checkpoint 2.1: Packages Installed
-```
-Expected Output:
-> Microsoft.Identity.Web                    2.15.2
-> Microsoft.Identity.Web.MicrosoftGraph     2.15.2
-
-Status: ✅ Packages installed
-```
-
-**🔍 Debug Log**:
-```
-NuGet Packages Installed:
-  ✅ Microsoft.Identity.Web v2.15.2
-  ✅ Microsoft.Identity.Web.MicrosoftGraph v2.15.2
-  
-Project still compiles: dotnet build
-Status: ✅ Ready for configuration
-```
-
----
-
-### Step 2.2: Update appsettings.json
-
-- [ ] Open: `BE/Sakura_Backend/SakuraV2Api/SakuraV2Api/appsettings.json`
-- [ ] Update the `AzureAd` section with your values:
-
-```json
-{
-  "Logging": { /* keep existing */ },
-  "ConnectionStrings": { /* keep existing */ },
-  
-  "AzureAd": {
-    "Instance": "https://login.microsoftonline.com/",
-    "TenantId": "6e8992ec-76d5-4ea5-8eae-b0c5e558749a",
-    "ClientId": "[YOUR-BACKEND-API-CLIENT-ID]",
-    "Audience": "api://[YOUR-BACKEND-API-CLIENT-ID]",
-    "Scopes": "access_as_user"
-  },
-  
-  "Jwt": {
-    "SecretKey": "DEPRECATED - Remove after Azure AD works",
-    "Issuer": "DEPRECATED",
-    "Audience": "DEPRECATED"
-  },
-  
-  "CorsSettings": { /* keep existing */ },
-  "AppSettings": { /* keep existing */ }
-}
-```
-
-- [ ] Replace `[YOUR-BACKEND-API-CLIENT-ID]` with actual value
-- [ ] Save file
-
-### ✅ Checkpoint 2.2: Configuration Updated
-```
-Expected:
-- AzureAd section has real values (no "your-tenant-id-here")
-- TenantId is a GUID
-- ClientId is a GUID
-- Audience starts with "api://"
-
-Status: ✅ Configuration ready
-```
-
-**🔍 Debug Log**:
-```
-appsettings.json Updated:
-  ✅ TenantId: 6e8992ec-...
-  ✅ ClientId: [your-value]
-  ✅ Audience: api://[your-value]
-  ✅ File saved
-  
-Status: ✅ Ready to update code
-```
-
----
-
-### Step 2.3: Create New ServiceExtensions Method
-
-- [ ] Open: `BE/Sakura_Backend/SakuraV2Api/SakuraV2Api/Extensions/ServiceExtensions.cs`
-- [ ] Add this NEW method (don't delete the old one yet):
-
-```csharp
-/// <summary>
-/// Configure Azure AD authentication - PRODUCTION
-/// </summary>
-public static IServiceCollection AddAzureAdAuthentication(
-    this IServiceCollection services,
-    IConfiguration configuration)
-{
-    // Clear default claim mappings
-    JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
-
-    // Add Microsoft Identity Web authentication
-    services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-        .AddMicrosoftIdentityWebApi(options =>
-        {
-            configuration.Bind("AzureAd", options);
-            
-            // Configure token validation
-            options.TokenValidationParameters = new TokenValidationParameters
-            {
-                ValidateIssuer = true,
-                ValidateAudience = true,
-                ValidateLifetime = true,
-                ValidateIssuerSigningKey = true,
-                NameClaimType = "preferred_username", // Use UPN from Azure AD
-                RoleClaimType = "roles" // Use roles from Azure AD
-            };
-            
-            // Log token validation
-            options.Events = new JwtBearerEvents
-            {
-                OnTokenValidated = context =>
-                {
-                    var logger = context.HttpContext.RequestServices
-                        .GetRequiredService<ILogger<Program>>();
-                    
-                    logger.LogInformation("=== AZURE AD TOKEN VALIDATED ===");
-                    logger.LogInformation($"User: {context.Principal?.Identity?.Name}");
-                    
-                    // Log all claims for debugging
-                    if (context.Principal != null)
-                    {
-                        foreach (var claim in context.Principal.Claims)
-                        {
-                            logger.LogInformation($"  Claim: {claim.Type} = {claim.Value}");
-                        }
-                    }
-                    logger.LogInformation("=== END TOKEN CLAIMS ===");
-                    
-                    return Task.CompletedTask;
-                },
-                OnAuthenticationFailed = context =>
-                {
-                    var logger = context.HttpContext.RequestServices
-                        .GetRequiredService<ILogger<Program>>();
-                    
-                    logger.LogError("=== AZURE AD AUTHENTICATION FAILED ===");
-                    logger.LogError($"Exception: {context.Exception.Message}");
-                    logger.LogError($"Stack: {context.Exception.StackTrace}");
-                    
-                    return Task.CompletedTask;
-                }
-            };
-        },
-        options =>
-        {
-            configuration.Bind("AzureAd", options);
-        });
-
-    // Keep existing authorization policies
-    services.AddAuthorization(options =>
-    {
-        options.AddPolicy("Authenticated", policy =>
-            policy.RequireAuthenticatedUser());
-            
-        options.AddPolicy("Requester", policy =>
-            policy.RequireAuthenticatedUser());
-            
-        options.AddPolicy("Approver", policy =>
-            policy.RequireAuthenticatedUser());
-            
-        options.AddPolicy("WorkspaceAdmin", policy =>
-            policy.RequireAuthenticatedUser());
-            
-        options.AddPolicy("SakuraAdmin", policy =>
-            policy.RequireAuthenticatedUser());
-    });
-
-    return services;
-}
-```
-
-- [ ] Save file
-
-### ✅ Checkpoint 2.3: New Method Added
-```bash
-# Verify it compiles
-dotnet build
-
-Expected: Build succeeded. 0 Error(s)
-```
-
-**🔍 Debug Log**:
-```
-New Authentication Method Created:
-  ✅ AddAzureAdAuthentication() added
-  ✅ Uses Microsoft.Identity.Web
-  ✅ Includes debug logging
-  ✅ Compiles successfully
-  
-Status: ✅ Ready to switch Program.cs
-```
-
----
-
-### Step 2.4: Update Program.cs to Use Azure AD
-
-- [ ] Open: `BE/Sakura_Backend/SakuraV2Api/SakuraV2Api/Program.cs`
-- [ ] Find line 28: `builder.Services.AddAuthenticationServices(builder.Configuration);`
-- [ ] **COMMENT OUT** the old line and **ADD** new line:
-
-```csharp
-// OLD: Temporary JWT
-// builder.Services.AddAuthenticationServices(builder.Configuration);
-
-// NEW: Azure AD authentication
-builder.Services.AddAzureAdAuthentication(builder.Configuration);
-```
-
-- [ ] Save file
-- [ ] Build to verify:
-
-```bash
-dotnet build
-```
-
-### ✅ Checkpoint 2.4: Program.cs Updated
-```bash
-# Run the backend
-dotnet run --launch-profile https
-
-Expected startup logs:
-info: Microsoft.Hosting.Lifetime[14]
-      Now listening on: https://localhost:7238
-info: Microsoft.Hosting.Lifetime[0]
-      Application started. Press Ctrl+C to shut down.
-```
-
-**🔍 Debug Log Expected**:
-```
-=== BACKEND STARTED WITH AZURE AD ===
-Now listening on: https://localhost:7238
-Swagger UI: https://localhost:7238/swagger
-Authentication: Microsoft.Identity.Web (Azure AD)
-Status: ✅ Backend running
-```
-
-⚠️ **Keep backend running for next test**
-
----
-
-### Step 2.5: Test Backend with Invalid Token (Should Fail)
-
-- [ ] Open new terminal (keep backend running)
-- [ ] Test API without token:
-
-```bash
-curl -X GET https://localhost:7238/api/v1/workspaces -k
-```
-
-- [ ] Test API with fake token:
-
-```bash
-curl -X GET https://localhost:7238/api/v1/workspaces -k -H "Authorization: Bearer fake-token-12345"
-```
-
-### ✅ Checkpoint 2.5: Backend Rejects Invalid Requests
-```
-Expected Response (both tests):
-HTTP/1.1 401 Unauthorized
-
-Expected in backend logs:
-=== AZURE AD AUTHENTICATION FAILED ===
-Exception: IDX10223: Lifetime validation failed...
-```
-
-**🔍 Debug Log Expected**:
-```
-Test 1 - No Token:
-  Response: 401 Unauthorized ✅
-  Reason: No Authorization header
-
-Test 2 - Fake Token:
-  Response: 401 Unauthorized ✅
-  Reason: Invalid token signature
-  Log: === AZURE AD AUTHENTICATION FAILED ===
-  
-Status: ✅ Backend correctly rejects invalid tokens
-```
-
----
-
-### Step 2.6: Update TempAuthService to Warn (Don't Remove Yet)
-
-- [ ] Open: `BE/Sakura_Backend/SakuraV2Api/SakuraV2Api/Services/TempAuthService.cs`
-- [ ] Add warning at top of class:
-
-```csharp
-/// <summary>
-/// DEPRECATED - This service is NO LONGER USED
-/// Authentication now handled by Azure AD via Microsoft.Identity.Web
-/// This class is kept temporarily for reference only
-/// TODO: Remove this file after Azure AD testing complete
-/// </summary>
-[Obsolete("Use Azure AD authentication instead")]
-public class TempAuthService
-{
-    // ... existing code ...
-}
-```
-
-- [ ] Save file
-
-### ✅ Checkpoint: Phase 2 Complete
-
-**Verification**:
-- [ ] Microsoft.Identity.Web packages installed ✅
-- [ ] appsettings.json has real Azure AD values ✅
-- [ ] New AddAzureAdAuthentication method created ✅
-- [ ] Program.cs uses Azure AD authentication ✅
-- [ ] Backend starts successfully ✅
-- [ ] Backend rejects invalid tokens ✅
-- [ ] TempAuthService marked deprecated ✅
-
-**🔍 Debug Log Expected**:
-```
-=== PHASE 2 COMPLETE ===
-Backend Configuration:
-  ✅ Azure AD authentication configured
-  ✅ Microsoft.Identity.Web integrated
-  ✅ Backend running on https://localhost:7238
-  ✅ Rejects unauthorized requests
-  ✅ Logging token validation events
-  
-Ready for Phase 3: Frontend Implementation
-```
-
-**🔴 CHECKPOINT: Backend Must Be Working Before Proceeding**
-
-If backend doesn't start or shows errors, STOP HERE and debug before continuing.
-
----
-
-## 🎨 PHASE 3: Frontend Implementation (6-8 hours)
-
-### Step 3.1: Install MSAL Angular Packages
-
-```bash
-cd FE/application
-```
-
-- [ ] Install packages:
-
-```bash
-npm install @azure/msal-browser@3.7.0
-npm install @azure/msal-angular@3.0.10
-```
-
-- [ ] Verify installation:
-
-```bash
-npm list @azure/msal-browser @azure/msal-angular
-```
-
-### ✅ Checkpoint 3.1: Packages Installed
-```
-Expected Output:
-├── @azure/msal-angular@3.0.10
-└── @azure/msal-browser@3.7.0
-
-Status: ✅ Packages installed
-```
-
-**🔍 Debug Log**:
-```
-NPM Packages Installed:
-  ✅ @azure/msal-browser v3.7.0
-  ✅ @azure/msal-angular v3.0.10
-  
-Project still compiles: npm run build
-Status: ✅ Ready for configuration
-```
-
----
-
-### Step 3.2: Update environment.ts
-
-- [ ] Open: `FE/application/src/environments/environment.ts`
-- [ ] Replace entire content with:
-
-```typescript
-/**
- * Development Environment Configuration
- * NOW USING: Azure AD Authentication
- */
-export const environment = {
-  production: false,
-  
-  // API Configuration
-  apiUrl: 'https://localhost:7238',
-  apiVersion: 'v1',
-  apiTimeout: 30000,
-  
-  // Azure AD Configuration
-  azureAd: {
-    clientId: '[YOUR-FRONTEND-SPA-CLIENT-ID]',
-    authority: 'https://login.microsoftonline.com/6e8992ec-76d5-4ea5-8eae-b0c5e558749a',
-    redirectUri: 'http://localhost:4200',
-    postLogoutRedirectUri: 'http://localhost:4200',
+## 2. Complete Authentication Flow
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant A as Angular App<br/>(localhost:4200)
+    participant MSAL as MSAL Angular<br/>(Browser)
+    participant AZURE as Azure AD<br/>(login.microsoftonline.com)
+    participant API as Backend API<br/>(localhost:7238)
+    participant DB as Sakura Database
+
+    Note over U,DB: === PHASE 1: Initial Page Load ===
     
-    // API Scopes - Request access to your backend API
-    scopes: [
-      'api://[YOUR-BACKEND-API-CLIENT-ID]/access_as_user'
-    ]
-  },
-  
-  // Feature Flags
-  enableLogging: true,
-  
-  // Pagination
-  defaultPageSize: 20,
-  maxPageSize: 100
-};
-```
+    U->>A: Navigate to http://localhost:4200
+    A->>MSAL: App Component ngOnInit()
+    MSAL->>MSAL: Initialize PublicClientApplication
+    MSAL->>MSAL: Check localStorage for cached tokens
+    MSAL->>MSAL: handleRedirectPromise()
+    
+    alt No cached tokens found
+        MSAL->>A: No active account
+        A->>A: Route Guard: MsalGuard.checkAccount()
+        A->>A: Redirect to /login page
+        A->>U: Show "Sign in with Microsoft" button
+    else Cached token found
+        MSAL->>MSAL: setActiveAccount(cachedAccount)
+        A->>U: Show dashboard (already authenticated)
+    end
 
-- [ ] Replace `[YOUR-FRONTEND-SPA-CLIENT-ID]` with your Frontend app client ID
-- [ ] Replace `[YOUR-BACKEND-API-CLIENT-ID]` with your Backend API client ID
-- [ ] Save file
+    Note over U,DB: === PHASE 2: User Clicks Login ===
+    
+    U->>A: Click "Sign in with Microsoft"
+    A->>MSAL: loginRedirect(request)
+    MSAL->>MSAL: Generate PKCE code verifier
+    MSAL->>MSAL: Generate state parameter
+    MSAL->>AZURE: Redirect to:<br/>https://login.microsoftonline.com/[tenant]/oauth2/v2.0/authorize?<br/>client_id=[SPA-CLIENT-ID]<br/>&response_type=code<br/>&redirect_uri=http://localhost:4200<br/>&scope=api://[API-CLIENT-ID]/access_as_user<br/>&code_challenge=[PKCE]<br/>&state=[state]
 
-### ✅ Checkpoint 3.2: Environment Configured
-```typescript
-Verify:
-- azureAd.clientId is a GUID (not placeholder)
-- azureAd.scopes[0] starts with "api://"
-- authority has real tenant ID
+    Note over U,DB: === PHASE 3: Azure AD Authentication ===
+    
+    AZURE->>U: Show Azure AD login page<br/>(dentsu branding)
+    U->>AZURE: Enter email: user@dentsu.com
+    U->>AZURE: Enter password
+    AZURE->>AZURE: Validate credentials
+    AZURE->>AZURE: Check MFA requirements
+    AZURE->>U: Prompt for MFA (if required)
+    U->>AZURE: Complete MFA challenge
+    AZURE->>AZURE: Validate MFA
+    
+    Note over U,DB: === PHASE 4: Token Issuance ===
+    
+    AZURE->>AZURE: Generate Authorization Code
+    AZURE->>MSAL: Redirect to:<br/>http://localhost:4200?code=[auth-code]&state=[state]
+    MSAL->>MSAL: Validate state parameter
+    MSAL->>AZURE: Exchange code for tokens:<br/>POST /oauth2/v2.0/token<br/>grant_type=authorization_code<br/>code=[auth-code]<br/>client_id=[SPA-CLIENT-ID]<br/>code_verifier=[PKCE-verifier]
+    
+    AZURE->>AZURE: Validate code_verifier
+    AZURE->>AZURE: Generate ID Token (JWT)
+    AZURE->>AZURE: Generate Access Token (JWT)
+    AZURE->>AZURE: Generate Refresh Token
+    
+    AZURE->>MSAL: Response:<br/>{<br/>  "id_token": "eyJ0eXAi...",<br/>  "access_token": "eyJ0eXAi...",<br/>  "refresh_token": "...",<br/>  "expires_in": 3600<br/>}
+    
+    Note over U,DB: === PHASE 5: Token Storage & Account Setup ===
+    
+    MSAL->>MSAL: Parse ID Token claims:<br/>- preferred_username: user@dentsu.com<br/>- name: John Doe<br/>- oid: [object-id]<br/>- email: user@dentsu.com
+    MSAL->>MSAL: Cache tokens in localStorage:<br/>- msal.account.keys<br/>- msal.idtoken.[account-id]<br/>- msal.accesstoken.[account-id].[scope]
+    MSAL->>MSAL: setActiveAccount(accountInfo)
+    MSAL->>A: Emit LOGIN_SUCCESS event
+    A->>A: Route to dashboard
 
-Status: ✅ Environment configured
-```
+    Note over U,DB: === PHASE 6: First API Call ===
+    
+    A->>A: Component loads (e.g., MyRequestsComponent)
+    A->>MSAL: HTTP Request: GET /api/v1/requests
+    MSAL->>MSAL: MsalInterceptor intercepts request
+    MSAL->>MSAL: Check if token needed:<br/>URL matches protectedResourceMap?
+    MSAL->>MSAL: Get token from cache:<br/>acquireTokenSilent()
+    
+    alt Token expired or missing
+        MSAL->>AZURE: Silent token refresh:<br/>acquireTokenSilent({scopes, account})
+        AZURE->>MSAL: New access token
+        MSAL->>MSAL: Update cache
+    end
+    
+    MSAL->>API: HTTP Request with header:<br/>Authorization: Bearer eyJ0eXAi...
 
-**🔍 Debug Log**:
-```
-environment.ts Updated:
-  ✅ Frontend Client ID: [your-spa-client-id]
-  ✅ Backend API Scope: api://[your-api-client-id]/access_as_user
-  ✅ Authority: https://login.microsoftonline.com/6e8992ec...
-  ✅ Redirect URI: http://localhost:4200
-  
-Status: ✅ Ready to configure MSAL
+    Note over U,DB: === PHASE 7: Backend Token Validation ===
+    
+    API->>API: JwtBearerAuthentication middleware
+    API->>API: Extract token from Authorization header
+    API->>AZURE: Validate token signature:<br/>GET https://login.microsoftonline.com/[tenant]/discovery/v2.0/keys
+    AZURE->>API: JWKS (JSON Web Key Set)
+    API->>API: Verify token signature using JWKS
+    API->>API: Validate claims:<br/>- aud (audience) = api://[API-CLIENT-ID]<br/>- iss (issuer) = https://login.microsoftonline.com/[tenant]/v2.0<br/>- exp (expiration) > now<br/>- scp (scope) contains "access_as_user"
+    API->>API: Create ClaimsPrincipal:<br/>- User.Identity.Name = preferred_username<br/>- User.Claims = all token claims
+    
+    API->>API: Log: "=== AZURE AD TOKEN VALIDATED ==="<br/>User: user@dentsu.com
+
+    Note over U,DB: === PHASE 8: User Lookup & Role Assignment ===
+    
+    API->>DB: SELECT * FROM core.Users<br/>WHERE Email = 'user@dentsu.com'
+    
+    alt User exists in database
+        DB->>API: User record found:<br/>{UserId, Email, Name, ...}
+        API->>API: Use existing UserId
+    else User not found
+        API->>API: Create new user record
+        API->>DB: INSERT INTO core.Users<br/>(Email, Name, ObjectId, ...)<br/>VALUES ('user@dentsu.com', 'John Doe', '[oid]', ...)
+        DB->>API: New UserId returned
+    end
+    
+    API->>DB: Query user roles:<br/>- Check sec.OLSApprovers<br/>- Check sec.RLSApprovers<br/>- Check core.Workspaces (workspace admin)<br/>- Check config (SakuraAdmin)
+    DB->>API: Role assignments:<br/>{IsRequester: true,<br/>IsApprover: true (OLS),<br/>IsWorkspaceAdmin: true,<br/>IsSakuraAdmin: false}
+
+    Note over U,DB: === PHASE 9: Authorization Check ===
+    
+    API->>API: [Authorize(Policy="Requester")] check
+    API->>API: User is authenticated? ✅<br/>Policy allows? ✅
+    API->>API: Execute controller method
+    API->>DB: SELECT * FROM core.Requests<br/>WHERE RequesterId = [UserId]
+    DB->>API: Request data returned
+    API->>MSAL: HTTP 200 OK<br/>{data: [...]}
+    MSAL->>A: Response data
+    A->>U: Display requests in UI
+
+    Note over U,DB: ✅ Authentication & Authorization Complete
 ```
 
 ---
 
-### Step 3.3: Create MSAL Configuration File
+## 3. Frontend MSAL Initialization
 
-- [ ] Create new file: `FE/application/src/app/config/msal.config.ts`
+```mermaid
+graph TD
+    A[Angular App Starts] --> B[app.config.ts loads]
+    
+    B --> C{MSAL Providers<br/>Registered?}
+    
+    C -->|Yes| D[MSALInstanceFactory called]
+    C -->|No| Error[Error: MSAL not configured]
+    
+    D --> E[Read environment.ts]
+    E --> E1[azureAd.clientId<br/>Frontend SPA Client ID]
+    E --> E2[azureAd.authority<br/>https://login.microsoftonline.com/[tenant]]
+    E --> E3[azureAd.redirectUri<br/>http://localhost:4200]
+    E --> E4[azureAd.scopes<br/>api://[API-CLIENT-ID]/access_as_user]
+    
+    E1 --> F[Create PublicClientApplication]
+    E2 --> F
+    E3 --> F
+    E4 --> F
+    
+    F --> G[MSAL Configuration Object]
+    G --> G1[auth: clientId, authority, redirectUri]
+    G --> G2[cache: BrowserCacheLocation.LocalStorage]
+    G --> G3[system: loggerOptions with console callbacks]
+    
+    G1 --> H[MSAL Instance Created]
+    G2 --> H
+    G3 --> H
+    
+    H --> I[App Component OnInit]
+    
+    I --> J[authService.instance.initialize]
+    J --> J1[Initialize MSAL in browser]
+    J --> J2[Set up event listeners]
+    J --> J3[Check for redirect response]
+    
+    J1 --> K{Redirect response<br/>in URL?}
+    J2 --> K
+    J3 --> K
+    
+    K -->|Yes: code=...&state=...| L[handleRedirectPromise]
+    K -->|No| M[Check localStorage cache]
+    
+    L --> L1[Extract authorization code]
+    L --> L2[Validate state parameter]
+    L --> L3[Exchange code for tokens]
+    L3 --> L4[Store tokens in cache]
+    L4 --> L5[setActiveAccount accountInfo]
+    
+    M --> M1[Read msal.account.keys]
+    M --> M2[Read msal.idtoken.*]
+    M --> M3[Read msal.accesstoken.*]
+    
+    M1 --> N{Accounts found<br/>in cache?}
+    M2 --> N
+    M3 --> N
+    
+    N -->|Yes| O[getAllAccounts]
+    N -->|No| P[No active account<br/>User needs to login]
+    
+    O --> O1[setActiveAccount firstAccount]
+    O1 --> Q[MSAL Ready<br/>Authenticated State]
+    
+    L5 --> Q
+    P --> R[MSAL Ready<br/>Unauthenticated State]
+    
+    Q --> S[MsalGuard checks account]
+    R --> S
+    
+    S --> S1{Active account<br/>exists?}
+    S1 -->|Yes| T[Allow route access]
+    S1 -->|No| U[Redirect to /login]
+    
+    T --> V[Component loads]
+    U --> W[Show login button]
+    
+    style A fill:#e1f5ff
+    style H fill:#90EE90
+    style Q fill:#90EE90
+    style R fill:#FFB6C1
+    style Error fill:#FF6B6B,color:#fff
+```
 
-```typescript
-import { 
-  BrowserCacheLocation, 
-  InteractionType, 
-  IPublicClientApplication, 
-  LogLevel, 
-  PublicClientApplication 
-} from '@azure/msal-browser';
-import { 
-  MsalGuardConfiguration, 
-  MsalInterceptorConfiguration 
-} from '@azure/msal-angular';
-import { environment } from '../../environments/environment';
+---
 
-/**
- * MSAL Browser Configuration
- */
-export const msalConfig = {
-  auth: {
-    clientId: environment.azureAd.clientId,
-    authority: environment.azureAd.authority,
-    redirectUri: environment.azureAd.redirectUri,
-    postLogoutRedirectUri: environment.azureAd.postLogoutRedirectUri,
-    navigateToLoginRequestUrl: true
-  },
-  cache: {
-    cacheLocation: BrowserCacheLocation.LocalStorage,
-    storeAuthStateInCookie: false, // Set to true for IE11/Edge
-  },
-  system: {
-    loggerOptions: {
-      loggerCallback: (level: LogLevel, message: string, containsPii: boolean) => {
-        if (containsPii) return;
+## 4. Microsoft Identity Platform Flow
+
+```mermaid
+graph TB
+    subgraph "Frontend: MSAL Angular"
+        A[User clicks Login]
+        A --> B[msalService.loginRedirect]
+        B --> C[Generate PKCE Challenge]
+        C --> C1[code_verifier: random string]
+        C --> C2[code_challenge: SHA256 hash]
+        C --> C3[state: random string for CSRF]
+    end
+    
+    C1 --> D[Build Authorization URL]
+    C2 --> D
+    C3 --> D
+    
+    D --> E[Redirect Browser to:<br/>https://login.microsoftonline.com/<br/>[tenant-id]/oauth2/v2.0/authorize?<br/>client_id=[SPA-CLIENT-ID]<br/>&response_type=code<br/>&redirect_uri=http://localhost:4200<br/>&scope=api://[API-CLIENT-ID]/access_as_user<br/>&code_challenge=[PKCE-challenge]<br/>&code_challenge_method=S256<br/>&state=[state]<br/>&response_mode=query]
+    
+    subgraph "Azure AD: Authorization Server"
+        E --> F[Azure AD Receives Request]
+        F --> F1[Validate client_id<br/>Frontend SPA App Registration]
+        F --> F2[Check redirect_uri<br/>matches registered URI]
+        F --> F3[Validate tenant ID]
         
-        switch (level) {
-          case LogLevel.Error:
-            console.error('[MSAL]', message);
-            return;
-          case LogLevel.Warning:
-            console.warn('[MSAL]', message);
-            return;
-          case LogLevel.Info:
-            console.info('[MSAL]', message);
-            return;
-          case LogLevel.Verbose:
-            console.debug('[MSAL]', message);
-            return;
-        }
-      },
-      logLevel: environment.enableLogging ? LogLevel.Verbose : LogLevel.Error,
-      piiLoggingEnabled: false
-    }
-  }
-};
-
-/**
- * Create MSAL instance
- */
-export function MSALInstanceFactory(): IPublicClientApplication {
-  console.log('=== MSAL INSTANCE CREATION ===');
-  console.log('Client ID:', environment.azureAd.clientId);
-  console.log('Authority:', environment.azureAd.authority);
-  console.log('Redirect URI:', environment.azureAd.redirectUri);
-  
-  const msalInstance = new PublicClientApplication(msalConfig);
-  
-  console.log('✅ MSAL instance created successfully');
-  return msalInstance;
-}
-
-/**
- * MSAL Guard Configuration
- * Protects routes from unauthorized access
- */
-export function MSALGuardConfigFactory(): MsalGuardConfiguration {
-  return {
-    interactionType: InteractionType.Redirect,
-    authRequest: {
-      scopes: environment.azureAd.scopes
-    },
-    loginFailedRoute: '/login-failed'
-  };
-}
-
-/**
- * MSAL Interceptor Configuration
- * Automatically adds tokens to API requests
- */
-export function MSALInterceptorConfigFactory(): MsalInterceptorConfiguration {
-  const protectedResourceMap = new Map<string, Array<string>>();
-  
-  // Protect all API calls to your backend
-  protectedResourceMap.set(
-    environment.apiUrl + '/*',
-    environment.azureAd.scopes
-  );
-  
-  console.log('=== MSAL INTERCEPTOR CONFIG ===');
-  console.log('Protected Resources:', Array.from(protectedResourceMap.entries()));
-  
-  return {
-    interactionType: InteractionType.Redirect,
-    protectedResourceMap
-  };
-}
-```
-
-- [ ] Create the `config` folder if it doesn't exist
-- [ ] Save file
-
-### ✅ Checkpoint 3.3: MSAL Config Created
-```bash
-# Verify file exists
-ls src/app/config/msal.config.ts
-
-Expected: File exists
-Status: ✅ Configuration file created
-```
-
-**🔍 Debug Log**:
-```
-MSAL Configuration Created:
-  ✅ File: src/app/config/msal.config.ts
-  ✅ MSALInstanceFactory defined
-  ✅ MSALGuardConfigFactory defined
-  ✅ MSALInterceptorConfigFactory defined
-  ✅ Logging configured
-  
-Status: ✅ Ready to integrate with Angular
-```
-
----
-
-### Step 3.4: Update app.config.ts
-
-- [ ] Open: `FE/application/src/app/app.config.ts`
-- [ ] Replace entire content with:
-
-```typescript
-import { ApplicationConfig, importProvidersFrom } from '@angular/core';
-import { provideRouter } from '@angular/router';
-import { provideHttpClient, withInterceptors, HTTP_INTERCEPTORS } from '@angular/common/http';
-import { 
-  MSAL_INSTANCE, 
-  MSAL_GUARD_CONFIG, 
-  MSAL_INTERCEPTOR_CONFIG, 
-  MsalService, 
-  MsalGuard, 
-  MsalBroadcastService,
-  MsalInterceptor,
-  MsalModule
-} from '@azure/msal-angular';
-
-import { routes } from './app.routes';
-import { 
-  MSALInstanceFactory, 
-  MSALGuardConfigFactory, 
-  MSALInterceptorConfigFactory 
-} from './config/msal.config';
-
-export const appConfig: ApplicationConfig = {
-  providers: [
-    // Routing
-    provideRouter(routes),
-    
-    // HTTP Client with MSAL Interceptor
-    provideHttpClient(),
-    
-    // MSAL Configuration
-    {
-      provide: HTTP_INTERCEPTORS,
-      useClass: MsalInterceptor,
-      multi: true
-    },
-    {
-      provide: MSAL_INSTANCE,
-      useFactory: MSALInstanceFactory
-    },
-    {
-      provide: MSAL_GUARD_CONFIG,
-      useFactory: MSALGuardConfigFactory
-    },
-    {
-      provide: MSAL_INTERCEPTOR_CONFIG,
-      useFactory: MSALInterceptorConfigFactory
-    },
-    
-    // MSAL Services
-    MsalService,
-    MsalGuard,
-    MsalBroadcastService,
-    
-    // Import MSAL Module (for compatibility)
-    importProvidersFrom(MsalModule)
-  ]
-};
-```
-
-- [ ] Save file
-- [ ] Build to verify:
-
-```bash
-npm run build
-```
-
-### ✅ Checkpoint 3.4: App Config Updated
-```bash
-# Build should succeed
-npm run build
-
-Expected: ✔ Built successfully
-Status: ✅ MSAL integrated with Angular
-```
-
-**🔍 Debug Log Expected**:
-```
-app.config.ts Updated:
-  ✅ MSAL providers added
-  ✅ HTTP_INTERCEPTORS configured
-  ✅ MSAL factories registered
-  ✅ Build successful
-  
-Status: ✅ Angular knows about MSAL
-```
-
----
-
-### Step 3.5: Update App Component to Initialize MSAL
-
-- [ ] Open: `FE/application/src/app/app.ts`
-- [ ] Replace entire content with:
-
-```typescript
-import { Component, OnInit, Inject } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
-import { 
-  MsalService, 
-  MsalBroadcastService, 
-  MSAL_GUARD_CONFIG, 
-  MsalGuardConfiguration 
-} from '@azure/msal-angular';
-import { 
-  InteractionStatus, 
-  RedirectRequest, 
-  EventMessage, 
-  EventType 
-} from '@azure/msal-browser';
-import { filter, takeUntil } from 'rxjs/operators';
-import { Subject } from 'rxjs';
-
-@Component({
-  selector: 'app-root',
-  standalone: true,
-  imports: [RouterOutlet],
-  template: '<router-outlet />',
-  styles: []
-})
-export class App implements OnInit {
-  private readonly _destroying$ = new Subject<void>();
-  
-  constructor(
-    @Inject(MSAL_GUARD_CONFIG) private msalGuardConfig: MsalGuardConfiguration,
-    private authService: MsalService,
-    private msalBroadcastService: MsalBroadcastService
-  ) {}
-
-  ngOnInit(): void {
-    console.log('=== APP INITIALIZATION ===');
-    console.log('MSAL Guard Config:', this.msalGuardConfig);
-    
-    // Initialize MSAL
-    this.authService.instance.initialize().then(() => {
-      console.log('✅ MSAL initialized');
-      
-      // Handle redirect after login
-      this.authService.instance.handleRedirectPromise().then(response => {
-        if (response) {
-          console.log('=== REDIRECT RESPONSE ===');
-          console.log('Account:', response.account?.username);
-          console.log('Access Token received:', !!response.accessToken);
-          console.log('ID Token received:', !!response.idToken);
-          
-          // Set active account
-          this.authService.instance.setActiveAccount(response.account);
-          console.log('✅ Active account set');
-        }
-      }).catch(error => {
-        console.error('❌ Error handling redirect:', error);
-      });
-    });
-
-    // Subscribe to MSAL events
-    this.msalBroadcastService.msalSubject$
-      .pipe(
-        filter((msg: EventMessage) => msg.eventType === EventType.LOGIN_SUCCESS),
-        takeUntil(this._destroying$)
-      )
-      .subscribe((result: EventMessage) => {
-        console.log('=== LOGIN SUCCESS EVENT ===');
-        console.log('Event:', result);
+        F1 --> G{Valid Request?}
+        F2 --> G
+        F3 --> G
         
-        const payload = result.payload as any;
-        if (payload.account) {
-          this.authService.instance.setActiveAccount(payload.account);
-          console.log('✅ Account set:', payload.account.username);
-        }
-      });
-
-    // Subscribe to interaction status
-    this.msalBroadcastService.inProgress$
-      .pipe(
-        filter((status: InteractionStatus) => status === InteractionStatus.None),
-        takeUntil(this._destroying$)
-      )
-      .subscribe(() => {
-        console.log('=== INTERACTION STATUS: None ===');
-        this.checkAndSetActiveAccount();
-      });
-  }
-
-  checkAndSetActiveAccount() {
-    const activeAccount = this.authService.instance.getActiveAccount();
+        G -->|No| Error1[Error: AADSTS50011<br/>Redirect URI mismatch]
+        G -->|Yes| H[Show Login Page]
+        
+        H --> I[User Enters Credentials]
+        I --> I1[Email: user@dentsu.com]
+        I --> I2[Password: ********]
+        
+        I1 --> J[Azure AD Validates]
+        I2 --> J
+        
+        J --> J1[Check User Exists]
+        J --> J2[Verify Password Hash]
+        J --> J3[Check Account Status<br/>Enabled? Blocked?]
+        
+        J1 --> K{Valid Credentials?}
+        J2 --> K
+        J3 --> K
+        
+        K -->|No| Error2[Error: Invalid credentials]
+        K -->|Yes| L[Check MFA Policy]
+        
+        L --> L1{ MFA Required?}
+        L1 -->|Yes| M[Prompt for MFA]
+        M --> M1[Send code to phone]
+        M --> M2[User enters code]
+        M2 --> M3{Code Valid?}
+        M3 -->|No| Error3[Error: Invalid MFA code]
+        M3 -->|Yes| N[MFA Verified]
+        L1 -->|No| N
+        
+        N --> O[Generate Authorization Code]
+        O --> O1[Code: [random-guid]]
+        O --> O2[Expires in: 10 minutes]
+        O --> O3[Single-use only]
+        O --> O4[Bound to: code_verifier]
+        
+        O1 --> P[Redirect to Frontend]
+        O2 --> P
+        O3 --> P
+        O4 --> P
+        
+        P --> Q[Redirect URL:<br/>http://localhost:4200?<br/>code=[auth-code]&<br/>state=[state]&<br/>session_state=[session]]
+    end
     
-    if (!activeAccount && this.authService.instance.getAllAccounts().length > 0) {
-      const accounts = this.authService.instance.getAllAccounts();
-      this.authService.instance.setActiveAccount(accounts[0]);
-      console.log('✅ Set first account as active:', accounts[0].username);
-    } else if (activeAccount) {
-      console.log('✅ Active account already set:', activeAccount.username);
-    } else {
-      console.log('⚠️ No accounts found - user needs to log in');
-    }
-  }
-
-  ngOnDestroy(): void {
-    this._destroying$.next();
-    this._destroying$.complete();
-  }
-}
-```
-
-- [ ] Save file
-- [ ] Build to verify:
-
-```bash
-npm run build
-```
-
-### ✅ Checkpoint 3.5: App Component Updated
-```bash
-Expected: ✔ Built successfully
-
-Status: ✅ App initializes MSAL on startup
-```
-
-**🔍 Debug Log Expected** (when you run the app later):
-```
-=== APP INITIALIZATION ===
-MSAL Guard Config: { interactionType: "redirect", ... }
-✅ MSAL initialized
-=== INTERACTION STATUS: None ===
-⚠️ No accounts found - user needs to log in
-```
-
----
-
-### Step 3.6: Create Login Component (Temporary - for explicit login)
-
-- [ ] Create file: `FE/application/src/app/components/azure-login/azure-login.component.ts`
-
-```typescript
-import { Component } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
-import { MsalService } from '@azure/msal-angular';
-import { RedirectRequest } from '@azure/msal-browser';
-import { environment } from '../../../environments/environment';
-
-@Component({
-  selector: 'app-azure-login',
-  standalone: true,
-  imports: [CommonModule],
-  template: `
-    <div class="login-container">
-      <div class="login-card">
-        <div class="login-header">
-          <h1>🌸 Sakura V2</h1>
-          <p>Access Request & Approval System</p>
-        </div>
-
-        <div class="login-body">
-          <div class="info-section">
-            <h3>🔐 Authentication Required</h3>
-            <p>Sign in with your dentsu Microsoft account</p>
-          </div>
-
-          <button 
-            class="btn-microsoft" 
-            (click)="login()"
-            [disabled]="isLoggingIn">
-            <span *ngIf="!isLoggingIn">
-              <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='21' height='21'%3E%3Cpath fill='%23f25022' d='M0 0h10v10H0z'/%3E%3Cpath fill='%2300a4ef' d='M11 0h10v10H11z'/%3E%3Cpath fill='%237fba00' d='M0 11h10v10H0z'/%3E%3Cpath fill='%23ffb900' d='M11 11h10v10H11z'/%3E%3C/svg%3E" 
-                   alt="Microsoft" 
-                   class="ms-icon">
-              Sign in with Microsoft
-            </span>
-            <span *ngIf="isLoggingIn">
-              Redirecting to Microsoft...
-            </span>
-          </button>
-
-          <div class="debug-info" *ngIf="showDebug">
-            <h4>🔍 Debug Information</h4>
-            <pre>{{ debugInfo }}</pre>
-          </div>
-        </div>
-
-        <div class="login-footer">
-          <small>Azure AD Authentication Enabled</small>
-          <small>Tenant: dentsu</small>
-        </div>
-      </div>
-    </div>
-  `,
-  styles: [`
-    .login-container {
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      padding: 20px;
-    }
-
-    .login-card {
-      background: white;
-      border-radius: 16px;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-      max-width: 450px;
-      width: 100%;
-      overflow: hidden;
-    }
-
-    .login-header {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      padding: 40px 30px;
-      text-align: center;
-    }
-
-    .login-header h1 {
-      margin: 0 0 10px 0;
-      font-size: 36px;
-    }
-
-    .login-header p {
-      margin: 0;
-      opacity: 0.9;
-      font-size: 16px;
-    }
-
-    .login-body {
-      padding: 40px 30px;
-    }
-
-    .info-section {
-      text-align: center;
-      margin-bottom: 30px;
-    }
-
-    .info-section h3 {
-      margin: 0 0 10px 0;
-      color: #333;
-      font-size: 20px;
-    }
-
-    .info-section p {
-      margin: 0;
-      color: #666;
-      font-size: 14px;
-    }
-
-    .btn-microsoft {
-      width: 100%;
-      padding: 14px 24px;
-      background: #2f2f2f;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      font-size: 15px;
-      font-weight: 600;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 12px;
-      transition: background 0.2s;
-    }
-
-    .btn-microsoft:hover:not(:disabled) {
-      background: #1f1f1f;
-    }
-
-    .btn-microsoft:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
-
-    .ms-icon {
-      width: 21px;
-      height: 21px;
-    }
-
-    .debug-info {
-      margin-top: 30px;
-      padding: 15px;
-      background: #f5f5f5;
-      border-radius: 8px;
-      border: 1px solid #ddd;
-    }
-
-    .debug-info h4 {
-      margin: 0 0 10px 0;
-      font-size: 14px;
-      color: #333;
-    }
-
-    .debug-info pre {
-      margin: 0;
-      font-size: 11px;
-      color: #666;
-      white-space: pre-wrap;
-      word-break: break-all;
-    }
-
-    .login-footer {
-      background: #f8f9fa;
-      padding: 20px 30px;
-      text-align: center;
-      border-top: 1px solid #e9ecef;
-    }
-
-    .login-footer small {
-      display: block;
-      color: #6c757d;
-      margin: 5px 0;
-    }
-  `]
-})
-export class AzureLoginComponent {
-  isLoggingIn = false;
-  showDebug = environment.enableLogging;
-  debugInfo = '';
-
-  constructor(
-    private authService: MsalService,
-    private router: Router
-  ) {
-    this.updateDebugInfo();
-  }
-
-  login(): void {
-    console.log('=== LOGIN BUTTON CLICKED ===');
+    subgraph "Frontend: Token Exchange"
+        Q --> R[MSAL handlesRedirectPromise]
+        R --> R1[Extract code from URL]
+        R --> R2[Extract state from URL]
+        R --> R3[Validate state matches<br/>original state]
+        
+        R1 --> S{State Valid?}
+        R2 --> S
+        R3 --> S
+        
+        S -->|No| Error4[Error: State mismatch<br/>CSRF attack detected]
+        S -->|Yes| T[Call Token Endpoint]
+        
+        T --> U[POST https://login.microsoftonline.com/<br/>[tenant-id]/oauth2/v2.0/token]
+        
+        U --> U1[grant_type: authorization_code]
+        U --> U2[code: [auth-code]]
+        U --> U3[client_id: [SPA-CLIENT-ID]]
+        U --> U4[redirect_uri: http://localhost:4200]
+        U --> U5[code_verifier: [original-verifier]]
+        U --> U6[scope: api://[API-CLIENT-ID]/access_as_user]
+    end
     
-    this.isLoggingIn = true;
+    subgraph "Azure AD: Token Generation"
+        U --> V[Azure AD Receives Token Request]
+        V --> V1[Validate authorization code]
+        V --> V2[Validate code_verifier:<br/>SHA256 verifier == challenge]
+        V --> V3[Check code not expired]
+        V --> V4[Check code not used before]
+        
+        V1 --> W{All Validations Pass?}
+        V2 --> W
+        V3 --> W
+        V4 --> W
+        
+        W -->|No| Error5[Error: Invalid code]
+        W -->|Yes| X[Generate Tokens]
+        
+        X --> X1[ID Token JWT]
+        X --> X2[Access Token JWT]
+        X --> X3[Refresh Token]
+        
+        X1 --> X1A[Claims:<br/>- iss: issuer<br/>- sub: user object ID<br/>- aud: SPA client ID<br/>- preferred_username: user@dentsu.com<br/>- name: John Doe<br/>- email: user@dentsu.com<br/>- exp: expiration<br/>- iat: issued at]
+        
+        X2 --> X2A[Claims:<br/>- iss: issuer<br/>- sub: user object ID<br/>- aud: api://[API-CLIENT-ID]<br/>- scp: access_as_user<br/>- exp: expiration (1 hour)<br/>- iat: issued at]
+        
+        X3 --> X3A[Refresh Token:<br/>- Long-lived<br/>- Used for silent refresh<br/>- Stored securely]
+        
+        X1A --> Y[Response JSON]
+        X2A --> Y
+        X3A --> Y
+        
+        Y --> Y1[{<br/>  access_token: eyJ0eXAi...,<br/>  id_token: eyJ0eXAi...,<br/>  refresh_token: ...,<br/>  expires_in: 3600,<br/>  token_type: Bearer<br/>}]
+    end
     
-    const loginRequest: RedirectRequest = {
-      scopes: environment.azureAd.scopes,
-      prompt: 'select_account'
-    };
-
-    console.log('Login Request:', loginRequest);
-    console.log('Redirecting to Azure AD...');
+    Y1 --> Z[Frontend Receives Tokens]
+    Z --> Z1[Parse ID Token]
+    Z --> Z2[Extract user info:<br/>- preferred_username<br/>- name<br/>- oid]
+    Z --> Z3[Cache tokens in localStorage]
+    Z --> Z4[setActiveAccount accountInfo]
     
-    this.authService.loginRedirect(loginRequest);
-  }
-
-  updateDebugInfo(): void {
-    this.debugInfo = JSON.stringify({
-      clientId: environment.azureAd.clientId,
-      authority: environment.azureAd.authority,
-      redirectUri: environment.azureAd.redirectUri,
-      scopes: environment.azureAd.scopes,
-      accounts: this.authService.instance.getAllAccounts().length
-    }, null, 2);
-  }
-}
-```
-
-- [ ] Create the directory if it doesn't exist: `FE/application/src/app/components/azure-login/`
-- [ ] Save file
-
-### ✅ Checkpoint 3.6: Login Component Created
-```bash
-# Verify file exists
-ls src/app/components/azure-login/azure-login.component.ts
-
-Expected: File exists
-Status: ✅ Login component ready
-```
-
-**🔍 Debug Log**:
-```
-Login Component Created:
-  ✅ File: azure-login.component.ts
-  ✅ Uses MsalService.loginRedirect()
-  ✅ Shows Microsoft sign-in button
-  ✅ Includes debug information
-  
-Status: ✅ Ready to update routes
+    Z1 --> AA[Authentication Complete]
+    Z2 --> AA
+    Z3 --> AA
+    Z4 --> AA
+    
+    style Error1 fill:#FF6B6B,color:#fff
+    style Error2 fill:#FF6B6B,color:#fff
+    style Error3 fill:#FF6B6B,color:#fff
+    style Error4 fill:#FF6B6B,color:#fff
+    style Error5 fill:#FF6B6B,color:#fff
+    style AA fill:#90EE90
 ```
 
 ---
 
-### Step 3.7: Update Routes to Use MSAL Guard
+## 5. Backend Token Validation
 
-- [ ] Open: `FE/application/src/app/app.routes.ts`
-- [ ] Replace with:
-
-```typescript
-import { Routes } from '@angular/router';
-import { MsalGuard } from '@azure/msal-angular';
-import { AzureLoginComponent } from './components/azure-login/azure-login.component';
-
-export const routes: Routes = [
-  // Public route - login page
-  {
-    path: 'login',
-    component: AzureLoginComponent
-  },
-  
-  // All other routes protected by MSAL Guard
-  {
-    path: '',
-    canActivate: [MsalGuard],
-    children: [
-      {
-        path: '',
-        loadComponent: () => import('./components/layout/layout.component').then(m => m.LayoutComponent),
-        children: [
-          {
-            path: '',
-            loadComponent: () => import('./components/home/home.component').then(m => m.HomeComponent)
-          },
-          {
-            path: 'request',
-            loadComponent: () => import('./components/request-form/request-form.component').then(m => m.RequestFormComponent)
-          },
-          {
-            path: 'my-requests',
-            loadComponent: () => import('./components/my-requests/my-requests.component').then(m => m.MyRequestsComponent)
-          },
-          {
-            path: 'approvals',
-            loadComponent: () => import('./components/approvals/approvals.component').then(m => m.ApprovalsComponent)
-          },
-          {
-            path: 'catalogue',
-            loadComponent: () => import('./components/catalogue/catalogue.component').then(m => m.CatalogueComponent)
-          },
-          {
-            path: 'my-access',
-            loadComponent: () => import('./components/my-access/my-access.component').then(m => m.MyAccessComponent)
-          },
-          {
-            path: 'delegation',
-            loadComponent: () => import('./components/delegation/delegation.component').then(m => m.DelegationComponent)
-          },
-          {
-            path: 'management',
-            loadComponent: () => import('./components/management/management.component').then(m => m.ManagementComponent)
-          }
-        ]
-      }
-    ]
-  },
-  
-  // Redirect unknown routes to home
-  {
-    path: '**',
-    redirectTo: ''
-  }
-];
-```
-
-- [ ] Save file
-- [ ] Build:
-
-```bash
-npm run build
-```
-
-### ✅ Checkpoint 3.7: Routes Updated
-```bash
-Expected: ✔ Built successfully
-
-Status: ✅ All routes protected by MsalGuard
-```
-
-**🔍 Debug Log**:
-```
-Routes Updated:
-  ✅ /login is public
-  ✅ All other routes use canActivate: [MsalGuard]
-  ✅ Unauthenticated users will be redirected to Azure AD
-  ✅ Build successful
-  
-Status: ✅ Ready to test authentication flow
-```
-
----
-
-### ✅ Checkpoint: Phase 3 Complete
-
-**Verification**:
-- [ ] MSAL packages installed ✅
-- [ ] environment.ts has Azure AD config ✅
-- [ ] msal.config.ts created ✅
-- [ ] app.config.ts uses MSAL providers ✅
-- [ ] app.ts initializes MSAL ✅
-- [ ] azure-login component created ✅
-- [ ] Routes protected by MsalGuard ✅
-- [ ] Project builds successfully ✅
-
-**🔍 Debug Log Expected**:
-```
-=== PHASE 3 COMPLETE ===
-Frontend Configuration:
-  ✅ MSAL Angular integrated
-  ✅ Azure AD configuration set
-  ✅ Login component created
-  ✅ Routes protected
-  ✅ Build successful
-  
-Ready for Phase 4: End-to-End Testing
-```
-
----
-
-## 🧪 PHASE 4: End-to-End Testing (4-6 hours)
-
-### Step 4.1: Start Backend with Logging
-
-- [ ] Open terminal 1:
-
-```bash
-cd BE/Sakura_Backend/SakuraV2Api/SakuraV2Api
-dotnet run --launch-profile https
-```
-
-### ✅ Checkpoint 4.1: Backend Running
-```
-Expected Output:
-info: Microsoft.Hosting.Lifetime[14]
-      Now listening on: https://localhost:7238
-info: Microsoft.Hosting.Lifetime[0]
-      Application started.
-```
-
-**🔍 Debug Log Expected**:
-```
-=== BACKEND STARTED ===
-Environment: Development
-URL: https://localhost:7238
-Swagger: https://localhost:7238/swagger
-Authentication: Microsoft.Identity.Web (Azure AD)
-Status: ✅ Ready to accept requests
-```
-
-⚠️ **Keep this terminal open**
-
----
-
-### Step 4.2: Start Frontend with Logging
-
-- [ ] Open terminal 2:
-
-```bash
-cd FE/application
-npm start
-```
-
-### ✅ Checkpoint 4.2: Frontend Running
-```
-Expected Output:
-✔ Browser application bundle generation complete.
-** Angular Live Development Server is listening on localhost:4200
-```
-
-**🔍 Debug Log Expected in Browser Console** (after opening http://localhost:4200):
-```
-=== APP INITIALIZATION ===
-MSAL Guard Config: { interactionType: "redirect", authRequest: {...} }
-✅ MSAL initialized
-=== MSAL INTERCEPTOR CONFIG ===
-Protected Resources: [["https://localhost:7238/*", ["api://[your-api-id]/access_as_user"]]]
-=== INTERACTION STATUS: None ===
-⚠️ No accounts found - user needs to log in
-```
-
-⚠️ **Keep this terminal open**
-
----
-
-### Step 4.3: Test Redirect to Login
-
-- [ ] Open browser: http://localhost:4200
-- [ ] Open browser DevTools (F12)
-- [ ] Go to Console tab
-- [ ] Watch for redirects
-
-### ✅ Checkpoint 4.3: Redirect Works
-```
-Expected Behavior:
-1. Navigate to http://localhost:4200
-2. MsalGuard detects no authentication
-3. Browser redirects to http://localhost:4200/login
-4. Login page shows "Sign in with Microsoft" button
-```
-
-**🔍 Debug Log Expected in Console**:
-```
-=== APP INITIALIZATION ===
-✅ MSAL initialized
-⚠️ No accounts found - user needs to log in
-[MSAL] Interaction required - redirecting to login
-```
-
-**Screenshot Checkpoint**: You should see the purple login page with Microsoft button.
-
----
-
-### Step 4.4: Test Azure AD Login
-
-- [ ] Click "Sign in with Microsoft" button
-- [ ] Watch console logs
-
-### ✅ Checkpoint 4.4: Redirect to Azure AD
-```
-Expected Console Logs:
-=== LOGIN BUTTON CLICKED ===
-Login Request: {scopes: Array(1), prompt: "select_account"}
-Redirecting to Azure AD...
-```
-
-**Expected Browser Behavior**:
-1. Browser redirects to: `https://login.microsoftonline.com/6e8992ec.../oauth2/v2.0/authorize?...`
-2. Azure AD login page appears
-3. Shows your organization name (dentsu)
-
-**🔍 Debug Log Expected**:
-```
-Browser Navigating to:
-  https://login.microsoftonline.com/6e8992ec-76d5-4ea5-8eae-b0c5e558749a/oauth2/v2.0/authorize
-  ?client_id=[your-frontend-client-id]
-  &response_type=code
-  &redirect_uri=http://localhost:4200
-  &scope=api://[your-api-id]/access_as_user
-
-Status: ✅ Azure AD login page loaded
+```mermaid
+graph TD
+    A[HTTP Request Arrives] --> B[ASP.NET Core Middleware Pipeline]
+    
+    B --> C{Has Authorization<br/>Header?}
+    C -->|No| D[401 Unauthorized<br/>No token provided]
+    C -->|Yes| E[Extract Bearer Token]
+    
+    E --> E1[Header: Authorization: Bearer eyJ0eXAi...]
+    E --> E2[Remove Bearer prefix]
+    E --> E3[Token string: eyJ0eXAi...]
+    
+    E3 --> F[JwtBearerAuthentication Middleware]
+    
+    F --> F1[Microsoft.Identity.Web]
+    F --> F2[JwtSecurityTokenHandler]
+    
+    F1 --> G[Read appsettings.json]
+    G --> G1[AzureAd.Instance: login.microsoftonline.com]
+    G --> G2[AzureAd.TenantId: 6e8992ec-...]
+    G --> G3[AzureAd.ClientId: [API-CLIENT-ID]]
+    G --> G4[AzureAd.Audience: api://[API-CLIENT-ID]]
+    
+    G1 --> H[Configure TokenValidationParameters]
+    G2 --> H
+    G3 --> H
+    G4 --> H
+    
+    H --> H1[ValidateIssuer: true]
+    H --> H2[ValidateAudience: true]
+    H --> H3[ValidateLifetime: true]
+    H --> H4[ValidateIssuerSigningKey: true]
+    H --> H5[ValidIssuer: https://login.microsoftonline.com/[tenant]/v2.0]
+    H --> H6[ValidAudience: api://[API-CLIENT-ID]]
+    
+    F2 --> I[Parse JWT Token]
+    I --> I1[Split token: header.payload.signature]
+    I --> I2[Decode Base64 header]
+    I --> I3[Decode Base64 payload]
+    I --> I4[Extract signature bytes]
+    
+    I1 --> J[Extract Claims from Payload]
+    J --> J1[iss: issuer claim]
+    J --> J2[aud: audience claim]
+    J --> J3[exp: expiration timestamp]
+    J --> J4[iat: issued at timestamp]
+    J --> J5[preferred_username: user email]
+    J --> J6[scp: scope claim]
+    J --> J7[oid: object ID]
+    J --> J8[name: display name]
+    
+    J1 --> K[Validate Issuer]
+    K --> K1{iss ==<br/>https://login.microsoftonline.com/<br/>[tenant]/v2.0?}
+    K1 -->|No| Error1[Error: IDX10205<br/>Issuer validation failed]
+    K1 -->|Yes| L[Validate Audience]
+    
+    J2 --> L
+    L --> L1{aud ==<br/>api://[API-CLIENT-ID]?}
+    L1 -->|No| Error2[Error: IDX10214<br/>Audience validation failed]
+    L1 -->|Yes| M[Validate Lifetime]
+    
+    J3 --> M
+    M --> M1[Get current time: now]
+    M --> M2[Convert exp to DateTime]
+    M --> M3{exp > now?}
+    M3 -->|No| Error3[Error: IDX10223<br/>Lifetime validation failed<br/>Token expired]
+    M3 -->|Yes| N[Validate Signature]
+    
+    N --> N1[Get JWKS from Azure AD]
+    N1 --> N2[GET https://login.microsoftonline.com/<br/>[tenant]/discovery/v2.0/keys]
+    
+    N2 --> O[Azure AD Returns JWKS]
+    O --> O1[JSON Web Key Set:<br/>{<br/>  keys: [<br/>    {<br/>      kid: key-id-1,<br/>      x5c: [certificate-chain],<br/>      use: sig,<br/>      alg: RS256<br/>    },<br/>    ...<br/>  ]<br/>}]
+    
+    O1 --> P[Find Matching Key]
+    P --> P1[Extract kid from token header]
+    P --> P2[Find key with matching kid in JWKS]
+    P --> P3{Key Found?}
+    
+    P3 -->|No| Error4[Error: IDX10503<br/>Unable to locate key]
+    P3 -->|Yes| Q[Build X509Certificate]
+    
+    Q --> Q1[Parse x5c certificate chain]
+    Q --> Q2[Create X509Certificate2]
+    Q --> Q3[Extract public key]
+    
+    Q3 --> R[Verify Token Signature]
+    R --> R1[Hash algorithm: RS256]
+    R --> R2[Hash token header + payload]
+    R --> R3[Verify signature using public key]
+    R --> R4{Signature Valid?}
+    
+    R4 -->|No| Error5[Error: IDX10511<br/>Signature validation failed]
+    R4 -->|Yes| S[Validate Scope]
+    
+    J6 --> S
+    S --> S1{scp contains<br/>access_as_user?}
+    S1 -->|No| Error6[Error: IDX10214<br/>Scope validation failed]
+    S1 -->|Yes| T[Token Validation Complete]
+    
+    T --> U[Create ClaimsPrincipal]
+    U --> U1[User.Identity.Name = preferred_username]
+    U --> U2[User.Claims.Add all token claims]
+    U --> U3[User.IsAuthenticated = true]
+    
+    U1 --> V[OnTokenValidated Event]
+    U2 --> V
+    U3 --> V
+    
+    V --> V1[Log: === AZURE AD TOKEN VALIDATED ===]
+    V --> V2[Log: User: user@dentsu.com]
+    V --> V3[Log all claims for debugging]
+    
+    V1 --> W[Attach ClaimsPrincipal to HttpContext]
+    V2 --> W
+    V3 --> W
+    
+    W --> W1[HttpContext.User = ClaimsPrincipal]
+    W --> W2[Request authorized]
+    
+    W1 --> X[Continue to Controller]
+    W2 --> X
+    
+    X --> Y[Controller Method Executes]
+    
+    style D fill:#FF6B6B,color:#fff
+    style Error1 fill:#FF6B6B,color:#fff
+    style Error2 fill:#FF6B6B,color:#fff
+    style Error3 fill:#FF6B6B,color:#fff
+    style Error4 fill:#FF6B6B,color:#fff
+    style Error5 fill:#FF6B6B,color:#fff
+    style Error6 fill:#FF6B6B,color:#fff
+    style T fill:#90EE90
+    style Y fill:#90EE90
 ```
 
 ---
 
-### Step 4.5: Complete Azure AD Login
+## 6. Role Management & Authorization
 
-- [ ] Enter your dentsu credentials (email/password)
-- [ ] Complete MFA if prompted
-- [ ] Watch for redirect back to app
-
-### ✅ Checkpoint 4.5: Login Success
-```
-Expected Browser Behavior:
-1. Azure AD validates credentials
-2. Browser redirects back to: http://localhost:4200?code=...
-3. MSAL exchanges code for tokens
-4. App loads dashboard
-```
-
-**🔍 Debug Log Expected in Console**:
-```
-=== REDIRECT RESPONSE ===
-Account: your-email@dentsu.com
-Access Token received: true
-ID Token received: true
-✅ Active account set
-
-=== LOGIN SUCCESS EVENT ===
-✅ Account set: your-email@dentsu.com
-
-=== INTERACTION STATUS: None ===
-✅ Active account already set: your-email@dentsu.com
-```
-
-**Screenshot Checkpoint**: You should see the Sakura dashboard, not the login page.
-
----
-
-### Step 4.6: Verify Token in API Call
-
-- [ ] In browser DevTools, go to Network tab
-- [ ] Navigate to any page (e.g., My Requests)
-- [ ] Find a request to `https://localhost:7238/api/v1/...`
-- [ ] Click on it
-- [ ] Go to Headers tab
-- [ ] Look for `Authorization` header
-
-### ✅ Checkpoint 4.6: Token Added to Requests
-```
-Expected in Network Tab:
-Request Headers:
-  Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGc...
-
-(Long token starting with "eyJ")
-```
-
-**🔍 Debug Log Expected in Backend Console**:
-```
-=== AZURE AD TOKEN VALIDATED ===
-User: your-email@dentsu.com
-  Claim: aud = api://[your-api-id]
-  Claim: iss = https://login.microsoftonline.com/6e8992ec.../v2.0
-  Claim: preferred_username = your-email@dentsu.com
-  Claim: name = Your Name
-  Claim: oid = [your-object-id]
-  Claim: scp = access_as_user
-=== END TOKEN CLAIMS ===
-```
-
-**Screenshot Checkpoint**: Take screenshot of:
-1. Authorization header in Network tab
-2. Backend console showing token validation
-
----
-
-### Step 4.7: Test API Call Success
-
-- [ ] Navigate to Workspaces page (or any page that calls API)
-- [ ] Check browser console for errors
-- [ ] Check backend console for logs
-
-### ✅ Checkpoint 4.7: API Calls Work
-```
-Expected:
-Frontend: 
-  - No 401 errors
-  - Data loads successfully
-  
-Backend:
-  - Token validated
-  - Request processed
-  - Response returned 200 OK
-```
-
-**🔍 Debug Log Expected**:
-
-**Frontend Console**:
-```
-[API Service] GET /api/v1/workspaces
-[API Service] Response 200: {data: Array(6)}
-```
-
-**Backend Console**:
-```
-=== AZURE AD TOKEN VALIDATED ===
-User: your-email@dentsu.com
-info: Processing GET /api/v1/workspaces
-info: Response 200 OK
-```
-
----
-
-### Step 4.8: Test Logout
-
-- [ ] Click user menu in header
-- [ ] Click Logout
-- [ ] Watch console logs
-
-### ✅ Checkpoint 4.8: Logout Works
-```
-Expected Behavior:
-1. Click logout
-2. MSAL clears tokens
-3. Browser redirects to Azure AD logout
-4. Azure AD clears session
-5. Browser redirects back to app
-6. App redirects to login page
-```
-
-**🔍 Debug Log Expected**:
-```
-[MSAL] Logging out...
-[MSAL] Clearing cache
-[MSAL] Redirecting to logout endpoint
-Browser navigating to:
-  https://login.microsoftonline.com/.../oauth2/v2.0/logout
-
-Then redirecting back to:
-  http://localhost:4200/login
-```
-
----
-
-### Step 4.9: Test Login Again
-
-- [ ] Click "Sign in with Microsoft" again
-- [ ] Should not ask for credentials (already logged in to Azure AD)
-
-### ✅ Checkpoint 4.9: SSO Works
-```
-Expected Behavior:
-1. Click "Sign in with Microsoft"
-2. Redirect to Azure AD
-3. Azure AD sees existing session
-4. Immediately redirects back with token
-5. No credentials needed!
-```
-
-**🔍 Debug Log Expected**:
-```
-=== LOGIN BUTTON CLICKED ===
-Redirecting to Azure AD...
-[Brief redirect to login.microsoftonline.com]
-=== REDIRECT RESPONSE ===
-Account: your-email@dentsu.com
-✅ Active account set
-[Dashboard loads immediately]
-```
-
-**This proves SSO is working!** ✅
-
----
-
-### Step 4.10: Test Token Refresh
-
-- [ ] Stay logged in
-- [ ] Wait 5 minutes (or close and reopen browser tab)
-- [ ] Navigate to a different page
-- [ ] Watch for token refresh
-
-### ✅ Checkpoint 4.10: Token Refresh Works
-```
-Expected in Console:
-[MSAL] Access token expired
-[MSAL] Attempting silent token refresh
-[MSAL] Token refresh successful
-[MSAL] Using new access token
-```
-
-**🔍 Debug Log Expected**:
-```
-[MSAL] Token expiration check
-[MSAL] Token expires at: [timestamp]
-[MSAL] Time remaining: 45 minutes
-[MSAL] Token still valid - no refresh needed
-
-OR (if expired):
-
-[MSAL] Token expired
-[MSAL] Calling acquireTokenSilent()
-[MSAL] Silent refresh successful
-✅ New token acquired
+```mermaid
+graph TB
+    subgraph "Azure AD: Identity Source"
+        A[User Logs In]
+        A --> B[Azure AD Token Claims]
+        B --> B1[preferred_username: user@dentsu.com]
+        B --> B2[oid: [object-id]]
+        B --> B3[groups: [group-ids]]
+        B --> B4[roles: [role-ids]]
+    end
+    
+    subgraph "Backend: Token Validation"
+        B --> C[ClaimsPrincipal Created]
+        C --> C1[User.Identity.Name = user@dentsu.com]
+        C --> C2[User.Claims = all token claims]
+    end
+    
+    subgraph "Sakura Database: Role Storage"
+        C1 --> D[Query core.Users]
+        D --> D1[SELECT * FROM core.Users<br/>WHERE Email = 'user@dentsu.com']
+        
+        D1 --> E{User Exists?}
+        E -->|No| F[INSERT new user]
+        E -->|Yes| G[Get UserId]
+        
+        F --> F1[Email: user@dentsu.com<br/>Name: John Doe<br/>ObjectId: [oid]<br/>CreatedDate: NOW]
+        F1 --> G
+        
+        G --> H[User ID: 12345]
+    end
+    
+    subgraph "Role Assignment Sources"
+        H --> I1[Source 1: Azure AD Groups<br/>Optional - for admin roles]
+        H --> I2[Source 2: Database Tables<br/>Primary - for business logic]
+        
+        I1 --> I1A[Check if user in group:<br/>SG-Sakura-Admins]
+        I1 --> I1B[Check if user in group:<br/>SG-Sakura-Support]
+        
+        I2 --> I2A[Check sec.OLSApprovers]
+        I2 --> I2B[Check sec.RLSApprovers]
+        I2 --> I2C[Check core.Workspaces]
+        I2 --> I2D[Check config.AdminUsers]
+    end
+    
+    subgraph "Role Checks in Database"
+        I2A --> J1[SELECT * FROM sec.OLSApprovers<br/>WHERE UserId = 12345<br/>AND DimensionCode = 'ORG-A']
+        
+        I2B --> J2[SELECT * FROM sec.RLSApprovers<br/>WHERE UserId = 12345<br/>AND DimensionCode = 'REG-X']
+        
+        I2C --> J3[SELECT * FROM core.Workspaces<br/>WHERE OwnerId = 12345]
+        
+        I2D --> J4[SELECT * FROM config.AdminUsers<br/>WHERE UserId = 12345]
+        
+        I1A --> K1{User in Admin Group?}
+        I1B --> K2{User in Support Group?}
+        
+        J1 --> L1{OLS Approver Found?}
+        J2 --> L2{RLS Approver Found?}
+        J3 --> L3{Workspace Owner?}
+        J4 --> L4{In Admin List?}
+    end
+    
+    subgraph "Role Resolution"
+        K1 -->|Yes| M1[IsSakuraAdmin = true]
+        K1 -->|No| M2[IsSakuraAdmin = false]
+        
+        K2 -->|Yes| M3[IsSakuraSupport = true]
+        K2 -->|No| M4[IsSakuraSupport = false]
+        
+        L1 -->|Yes| M5[IsOLSApprover = true<br/>for ORG-A]
+        L1 -->|No| M6[IsOLSApprover = false]
+        
+        L2 -->|Yes| M7[IsRLSApprover = true<br/>for REG-X]
+        L2 -->|No| M8[IsRLSApprover = false]
+        
+        L3 -->|Yes| M9[IsWorkspaceAdmin = true<br/>for workspace IDs: 1, 5, 7]
+        L3 -->|No| M10[IsWorkspaceAdmin = false]
+        
+        L4 -->|Yes| M11[IsSakuraAdmin = true<br/>override]
+        L4 -->|No| M12[Use Azure AD group check]
+    end
+    
+    subgraph "Base Role Assignment"
+        M1 --> N[All Users]
+        M2 --> N
+        M11 --> N
+        M12 --> N
+        
+        N --> N1[IsRequester = true<br/>Everyone can make requests]
+    end
+    
+    subgraph "Authorization Policy Evaluation"
+        N1 --> O[Authorization Middleware]
+        
+        M1 --> O
+        M3 --> O
+        M5 --> O
+        M7 --> O
+        M9 --> O
+        
+        O --> P1[Policy: Requester]
+        O --> P2[Policy: Approver]
+        O --> P3[Policy: WorkspaceAdmin]
+        O --> P4[Policy: SakuraAdmin]
+        
+        P1 --> P1A{Requires: Authenticated}
+        P2 --> P2A{Requires: Authenticated<br/>AND IsOLSApprover OR IsRLSApprover}
+        P3 --> P3A{Requires: Authenticated<br/>AND IsWorkspaceAdmin}
+        P4 --> P4A{Requires: Authenticated<br/>AND IsSakuraAdmin}
+        
+        P1A --> Q1{User Authenticated?}
+        P2A --> Q2{User Authenticated?<br/>AND Is Approver?}
+        P3A --> Q3{User Authenticated?<br/>AND Workspace Admin?}
+        P4A --> Q4{User Authenticated?<br/>AND Sakura Admin?}
+    end
+    
+    subgraph "Authorization Result"
+        Q1 -->|Yes| R1[✅ Policy: Requester - ALLOWED]
+        Q1 -->|No| R2[❌ Policy: Requester - DENIED<br/>401 Unauthorized]
+        
+        Q2 -->|Yes| R3[✅ Policy: Approver - ALLOWED]
+        Q2 -->|No| R4[❌ Policy: Approver - DENIED<br/>403 Forbidden]
+        
+        Q3 -->|Yes| R5[✅ Policy: WorkspaceAdmin - ALLOWED]
+        Q3 -->|No| R6[❌ Policy: WorkspaceAdmin - DENIED<br/>403 Forbidden]
+        
+        Q4 -->|Yes| R7[✅ Policy: SakuraAdmin - ALLOWED]
+        Q4 -->|No| R8[❌ Policy: SakuraAdmin - DENIED<br/>403 Forbidden]
+    end
+    
+    R1 --> S[Controller Method Executes]
+    R3 --> S
+    R5 --> S
+    R7 --> S
+    
+    R2 --> T[Request Rejected]
+    R4 --> T
+    R6 --> T
+    R8 --> T
+    
+    style R1 fill:#90EE90
+    style R3 fill:#90EE90
+    style R5 fill:#90EE90
+    style R7 fill:#90EE90
+    style R2 fill:#FF6B6B,color:#fff
+    style R4 fill:#FF6B6B,color:#fff
+    style R6 fill:#FF6B6B,color:#fff
+    style R8 fill:#FF6B6B,color:#fff
 ```
 
 ---
 
-### ✅ Checkpoint: Phase 4 Complete
+## 7. API Request with Token
 
-**Full Integration Test Checklist**:
-- [ ] Backend starts with Azure AD ✅
-- [ ] Frontend starts with MSAL ✅
-- [ ] Unauthenticated users redirected to login ✅
-- [ ] Login button redirects to Azure AD ✅
-- [ ] Azure AD login works ✅
-- [ ] Tokens received after login ✅
-- [ ] Tokens added to API requests ✅
-- [ ] Backend validates tokens ✅
-- [ ] API calls return data ✅
-- [ ] Logout clears session ✅
-- [ ] SSO works on second login ✅
-- [ ] Token refresh works ✅
+```mermaid
+sequenceDiagram
+    participant C as Angular Component
+    participant H as HTTP Client<br/>Angular
+    participant I as MsalInterceptor
+    participant MSAL as MSAL Service
+    participant API as Backend API
+    participant AZURE as Azure AD
+    participant DB as Database
+    participant R as Response
 
-**🔍 Debug Log Expected**:
-```
-=== PHASE 4 COMPLETE ===
-Integration Test Results:
-  ✅ Authentication flow working end-to-end
-  ✅ Tokens issued by Azure AD
-  ✅ Backend validates tokens
-  ✅ API calls secured
-  ✅ SSO working
-  ✅ Logout working
-  ✅ Token refresh working
-  
-Status: ✅ Azure AD integration fully functional!
-```
-
----
-
-## 🧹 PHASE 5: Cleanup (2 hours)
-
-### Step 5.1: Remove Old Login Component
-
-- [ ] Delete file: `FE/application/src/app/components/login/login.component.ts`
-- [ ] Verify no imports reference it:
-
-```bash
-grep -r "from './components/login/login.component'" src/
-```
-
-### ✅ Checkpoint 5.1: Old Login Removed
-```
-Expected: No matches found
-Status: ✅ Old login component removed
-```
-
----
-
-### Step 5.2: Remove TempAuthService
-
-- [ ] Delete: `BE/Sakura_Backend/SakuraV2Api/SakuraV2Api/Services/TempAuthService.cs`
-- [ ] Open: `ServiceExtensions.cs`
-- [ ] Delete the old `AddAuthenticationServices` method (the temporary JWT one)
-- [ ] Remove TempAuthService registration from DI
-
-```bash
-cd BE/Sakura_Backend/SakuraV2Api/SakuraV2Api
-dotnet build
-```
-
-### ✅ Checkpoint 5.2: Temp Auth Removed
-```
-Expected: Build succeeded. 0 Error(s)
-Status: ✅ Temporary auth code removed
-```
-
----
-
-### Step 5.3: Update Old AuthService (Frontend)
-
-The existing `auth.service.ts` is no longer needed for authentication (MSAL handles it), but we can keep it for user info:
-
-- [ ] Open: `FE/application/src/app/services/auth.service.ts`
-- [ ] Rename to: `user.service.ts`
-- [ ] Update to use MSAL for user info:
-
-```typescript
-import { Injectable } from '@angular/core';
-import { Observable, from } from 'rxjs';
-import { map } from 'rxjs/operators';
-import { MsalService } from '@azure/msal-angular';
-import { AccountInfo } from '@azure/msal-browser';
-
-/**
- * User Service
- * Wraps MSAL to provide user information
- */
-@Injectable({
-  providedIn: 'root'
-})
-export class UserService {
-  constructor(private msalService: MsalService) {}
-
-  /**
-   * Get current user account
-   */
-  getCurrentUser(): AccountInfo | null {
-    return this.msalService.instance.getActiveAccount();
-  }
-
-  /**
-   * Get user email/UPN
-   */
-  getUserEmail(): string | null {
-    const account = this.getCurrentUser();
-    return account?.username || null;
-  }
-
-  /**
-   * Get user display name
-   */
-  getUserName(): string | null {
-    const account = this.getCurrentUser();
-    return account?.name || null;
-  }
-
-  /**
-   * Check if user is authenticated
-   */
-  isAuthenticated(): boolean {
-    return this.getCurrentUser() !== null;
-  }
-
-  /**
-   * Login (redirect to Azure AD)
-   */
-  login(): void {
-    this.msalService.loginRedirect();
-  }
-
-  /**
-   * Logout (clears session)
-   */
-  logout(): void {
-    this.msalService.logoutRedirect();
-  }
-}
-```
-
-- [ ] Update components that use `AuthService` to use `UserService`
-- [ ] Build to verify:
-
-```bash
-npm run build
-```
-
-### ✅ Checkpoint 5.3: Services Refactored
-```
-Expected: ✔ Built successfully
-Status: ✅ Auth logic now fully managed by MSAL
+    Note over C,R: === API Request Flow ===
+    
+    C->>C: User clicks "My Requests"
+    C->>C: Component calls:<br/>this.requestService.getMyRequests()
+    
+    C->>H: HTTP GET /api/v1/requests
+    H->>I: Request intercepted by<br/>MsalInterceptor
+    
+    I->>I: Check request URL:<br/>https://localhost:7238/api/v1/requests
+    
+    I->>I: Check protectedResourceMap:<br/>Map.get('https://localhost:7238/*')
+    
+    I->>I: Match found!<br/>This URL needs a token
+    
+    I->>MSAL: acquireTokenSilent({<br/>  scopes: ['api://[API-ID]/access_as_user'],<br/>  account: activeAccount<br/>})
+    
+    MSAL->>MSAL: Check token cache:<br/>localStorage.getItem('msal.accesstoken...')
+    
+    alt Token exists and valid
+        MSAL->>MSAL: Get cached token
+        MSAL->>MSAL: Check expiration:<br/>expires_in > now + 5min buffer
+        
+        alt Token expires soon
+            MSAL->>AZURE: Silent refresh:<br/>acquireTokenSilent()
+            AZURE->>MSAL: New access token
+            MSAL->>MSAL: Update cache
+            MSAL->>I: Return new token
+        else Token still valid
+            MSAL->>I: Return cached token
+        end
+    else No token or expired
+        MSAL->>AZURE: acquireTokenSilent()
+        AZURE->>AZURE: Check refresh token valid
+        AZURE->>AZURE: Generate new access token
+        AZURE->>MSAL: New access token
+        MSAL->>MSAL: Cache new token
+        MSAL->>I: Return new token
+    end
+    
+    I->>I: Add Authorization header:<br/>Authorization: Bearer {accessToken}
+    
+    I->>I: Clone request with new header
+    I->>API: HTTP GET /api/v1/requests<br/>Headers:<br/>Authorization: Bearer eyJ0eXAi...
+    
+    Note over C,R: === Backend Processing ===
+    
+    API->>API: JwtBearerAuthentication middleware
+    API->>API: Extract token from header
+    API->>AZURE: Validate token signature<br/>GET /discovery/v2.0/keys
+    AZURE->>API: JWKS response
+    API->>API: Verify signature ✅
+    API->>API: Validate claims ✅
+    API->>API: Create ClaimsPrincipal
+    
+    API->>API: [Authorize] attribute check
+    API->>API: User.IsAuthenticated = true ✅
+    API->>API: Policy check: Requester ✅
+    
+    API->>API: Controller method executes:<br/>GetMyRequests()
+    
+    API->>API: Extract user email:<br/>User.Identity.Name = 'user@dentsu.com'
+    
+    API->>DB: SELECT UserId FROM core.Users<br/>WHERE Email = 'user@dentsu.com'
+    DB->>API: UserId = 12345
+    
+    API->>DB: SELECT * FROM core.Requests<br/>WHERE RequesterId = 12345<br/>ORDER BY CreatedDate DESC
+    
+    DB->>API: Result set:<br/>[{RequestId: 1, Status: 'Pending', ...},<br/>{RequestId: 2, Status: 'Approved', ...}]
+    
+    API->>API: Map to DTOs
+    API->>API: Return 200 OK
+    
+    API->>R: HTTP 200 OK<br/>{<br/>  data: [<br/>    {requestId: 1, ...},<br/>    {requestId: 2, ...}<br/>  ]<br/>}
+    
+    R->>I: Response received
+    I->>H: Pass through response
+    H->>C: Data returned
+    
+    C->>C: Update component state
+    C->>C: Display requests in UI
+    
+    Note over C,R: ✅ Request Complete
 ```
 
 ---
 
-### Step 5.4: Remove JWT Config from appsettings.json
+## 8. User Provisioning Flow
 
-- [ ] Open: `BE/Sakura_Backend/SakuraV2Api/SakuraV2Api/appsettings.json`
-- [ ] Remove or comment out the `Jwt` section:
-
-```json
-{
-  "Logging": { /* keep */ },
-  "ConnectionStrings": { /* keep */ },
-  
-  "AzureAd": { /* keep - this is active */ },
-  
-  // OLD - No longer used
-  // "Jwt": {
-  //   "SecretKey": "...",
-  //   "Issuer": "...",
-  //   "Audience": "..."
-  // },
-  
-  "CorsSettings": { /* keep */ },
-  "AppSettings": { /* keep */ }
-}
-```
-
-- [ ] Save and restart backend
-
-### ✅ Checkpoint 5.4: Config Cleaned
-```
-Status: ✅ Only Azure AD config remains
-```
-
----
-
-### Step 5.5: Update Documentation
-
-- [ ] Create: `docs/AZURE-AD-MIGRATION-COMPLETE.md`
-
-```markdown
-# ✅ Azure AD Migration Complete
-
-## Date: [Today's Date]
-## Status: Production Ready
-
-### Changes Made
-- ✅ Replaced temporary JWT with Azure AD
-- ✅ Integrated Microsoft.Identity.Web (backend)
-- ✅ Integrated MSAL Angular (frontend)
-- ✅ Removed old auth components
-- ✅ Tested end-to-end authentication
-
-### Configuration
-- **Tenant ID**: 6e8992ec-76d5-4ea5-8eae-b0c5e558749a
-- **Backend API App**: [Your Client ID]
-- **Frontend SPA App**: [Your Client ID]
-- **API Scope**: api://[your-api-id]/access_as_user
-
-### Testing Completed
-- [x] Login redirects to Azure AD
-- [x] Tokens received after login
-- [x] API calls include token
-- [x] Backend validates tokens
-- [x] SSO works
-- [x] Logout works
-- [x] Token refresh works
-
-### Next Steps
-- [ ] Test with multiple users
-- [ ] Test role-based authorization
-- [ ] Deploy to Azure (update redirect URIs)
-- [ ] Enable production logging
-```
-
-- [ ] Save file
-
----
-
-### ✅ Checkpoint: Phase 5 Complete
-
-**Cleanup Checklist**:
-- [ ] Old login component removed ✅
-- [ ] TempAuthService removed ✅
-- [ ] Auth service refactored ✅
-- [ ] JWT config removed ✅
-- [ ] Documentation updated ✅
-
-**🔍 Debug Log Expected**:
-```
-=== PHASE 5 COMPLETE ===
-Cleanup Summary:
-  ✅ Old authentication code removed
-  ✅ Only Azure AD code remains
-  ✅ Project builds successfully
-  ✅ All tests passing
-  
-Status: ✅ Ready for production deployment
+```mermaid
+graph TD
+    A[User First Time Login] --> B[Azure AD Authentication Success]
+    
+    B --> C[Token Received:<br/>ID Token contains user claims]
+    
+    C --> D[Backend Receives API Request]
+    D --> E[Token Validated]
+    E --> F[Extract User Claims]
+    
+    F --> F1[preferred_username: user@dentsu.com]
+    F --> F2[name: John Doe]
+    F --> F3[oid: abc123-def456-...]
+    F --> F4[email: user@dentsu.com]
+    
+    F1 --> G[Check Database]
+    F2 --> G
+    F3 --> G
+    F4 --> G
+    
+    G --> H[SELECT * FROM core.Users<br/>WHERE Email = 'user@dentsu.com'<br/>OR ObjectId = 'abc123-def456-...']
+    
+    H --> I{User Exists?}
+    
+    I -->|Yes| J[User Found]
+    I -->|No| K[User Not Found]
+    
+    J --> J1[Get existing UserId]
+    J --> J2[Update LastLoginDate = NOW]
+    J --> J3[Update Name if changed]
+    J --> J4[Return UserId]
+    
+    K --> L[Create New User]
+    
+    L --> L1[INSERT INTO core.Users<br/>(<br/>  Email,<br/>  Name,<br/>  ObjectId,<br/>  CreatedDate,<br/>  LastLoginDate,<br/>  IsActive<br/>)<br/>VALUES<br/>(<br/>  'user@dentsu.com',<br/>  'John Doe',<br/>  'abc123-def456-...',<br/>  GETDATE(),<br/>  GETDATE(),<br/>  1<br/>)]
+    
+    L1 --> M[Database Returns New UserId]
+    
+    M --> M1[UserId = 99999]
+    
+    M1 --> N[Assign Default Role]
+    N --> N1[IsRequester = true<br/>All users can make requests]
+    
+    N1 --> O[Check for Additional Roles]
+    
+    O --> P1{Is in Azure AD Group<br/>SG-Sakura-Admins?}
+    O --> P2{Is in config.AdminUsers?}
+    O --> P3{Is Workspace Owner?<br/>Check ADF import}
+    
+    P1 -->|Yes| Q1[UPDATE core.Users<br/>SET IsSakuraAdmin = 1]
+    P1 -->|No| Q2[IsSakuraAdmin = 0]
+    
+    P2 -->|Yes| Q3[UPDATE core.Users<br/>SET IsSakuraAdmin = 1]
+    P2 -->|No| Q4[IsSakuraAdmin = 0]
+    
+    P3 -->|Yes| Q5[Workspace ownership<br/>managed separately]
+    P3 -->|No| Q6[No workspace access]
+    
+    Q1 --> R[User Provisioned]
+    Q2 --> R
+    Q3 --> R
+    Q4 --> R
+    Q5 --> R
+    Q6 --> R
+    J4 --> R
+    
+    R --> S[User Ready to Use Application]
+    
+    Note1[Note: Line Manager data<br/>imported separately via ADF<br/>from Workday]
+    
+    S --> T[User Can Now:<br/>- Make requests<br/>- Approve requests<br/>- Manage workspaces<br/>based on role assignments]
+    
+    style A fill:#e1f5ff
+    style K fill:#FFF4E6
+    style L fill:#FFF4E6
+    style R fill:#90EE90
+    style S fill:#90EE90
 ```
 
 ---
 
-## 🎉 FINAL VERIFICATION
+## 9. Token Refresh Flow
 
-### Complete Integration Test
+```mermaid
+sequenceDiagram
+    participant MSAL as MSAL Angular
+    participant Cache as LocalStorage
+    participant AZURE as Azure AD
+    participant API as Backend API
 
-- [ ] **Test 1: Fresh Browser (Incognito)**
-  - Open incognito window
-  - Go to http://localhost:4200
-  - Should redirect to login
-  - Click "Sign in with Microsoft"
-  - Login with Azure AD
-  - Should see dashboard
-  - **✅ PASS**
-
-- [ ] **Test 2: API Authorization**
-  - Navigate to My Requests
-  - Check Network tab - token present
-  - Check backend logs - token validated
-  - Data loads successfully
-  - **✅ PASS**
-
-- [ ] **Test 3: Logout**
-  - Click logout
-  - Should return to login page
-  - Try accessing /dashboard directly
-  - Should redirect back to login
-  - **✅ PASS**
-
-- [ ] **Test 4: Token Expiry**
-  - Wait 1 hour (or manipulate token expiry)
-  - Make an API call
-  - Should automatically refresh token
-  - API call succeeds
-  - **✅ PASS**
-
-- [ ] **Test 5: Multiple Tabs**
-  - Login in tab 1
-  - Open tab 2 (same browser)
-  - Tab 2 should automatically be logged in
-  - **✅ PASS**
-
-### ✅ Final Checkpoint: ALL TESTS PASSED
-
-```
-=== AZURE AD INTEGRATION COMPLETE ===
-
-Test Results:
-  ✅ Authentication: WORKING
-  ✅ Authorization: WORKING
-  ✅ SSO: WORKING
-  ✅ Logout: WORKING
-  ✅ Token Refresh: WORKING
-  ✅ Multi-tab: WORKING
-
-Time Taken: [Your actual time]
-Status: 🎉 PRODUCTION READY
-```
-
----
-
-## 📊 Success Metrics
-
-| Metric | Target | Actual | Status |
-|--------|--------|--------|--------|
-| Backend build | Success | ✅ | Pass |
-| Frontend build | Success | ✅ | Pass |
-| Login flow | < 5 sec | ✅ | Pass |
-| Token validation | 100% | ✅ | Pass |
-| API calls secured | 100% | ✅ | Pass |
-| Tests passing | 100% | ✅ | Pass |
-
----
-
-## 🐛 Troubleshooting Guide
-
-### Problem: "AADSTS50011: Redirect URI mismatch"
-
-**Solution**:
-- Check Azure AD app registration
-- Verify redirect URI is EXACTLY: `http://localhost:4200` (no trailing slash)
-- Check environment.ts has same redirect URI
-
-### Problem: "AADSTS700016: Application not found"
-
-**Solution**:
-- Check Client ID in environment.ts matches Frontend app registration
-- Check Tenant ID is correct
-
-### Problem: Backend returns 401 after login
-
-**Solution**:
-- Check Network tab - is Authorization header present?
-- Check backend logs - what error in token validation?
-- Verify API Client ID in appsettings.json matches Backend app registration
-- Verify Audience in appsettings.json is `api://[backend-client-id]`
-
-### Problem: "Failed to acquire token silently"
-
-**Solution**:
-- Check scopes in environment.ts
-- Verify admin consent was granted
-- Try logout and login again
-
----
-
-## 📝 Next Steps After Completion
-
-1. **Test with Different Users**
-   - Login as different dentsu employees
-   - Verify roles are assigned correctly
-   - Test approver assignments
-
-2. **Implement Role-Based Authorization**
-   - Map Azure AD groups to Sakura roles
-   - Implement hybrid authorization (claims + database)
-   - Test admin-only endpoints
-
-3. **Production Deployment**
-   - Update redirect URIs for production domain
-   - Configure Azure Key Vault for secrets
-   - Enable production logging
-   - Deploy to Azure App Service + Static Web App
-
-4. **Monitoring**
-   - Set up Application Insights
-   - Monitor failed login attempts
-   - Track token refresh rates
-   - Alert on authentication failures
-
----
-
-## ✅ Completion Certificate
-
-```
-╔════════════════════════════════════════════════════════╗
-║                                                        ║
-║       🎉 AZURE AD INTEGRATION COMPLETE 🎉             ║
-║                                                        ║
-║   Sakura V2 now uses enterprise-grade authentication  ║
-║                                                        ║
-║   ✅ Microsoft Identity Platform                      ║
-║   ✅ Single Sign-On (SSO)                             ║
-║   ✅ Multi-Factor Authentication                      ║
-║   ✅ Secure Token Management                          ║
-║   ✅ Production Ready                                 ║
-║                                                        ║
-║   Completed by: ________________                      ║
-║   Date: ________________                              ║
-║   Time taken: _______ hours                           ║
-║                                                        ║
-╚════════════════════════════════════════════════════════╝
+    Note over MSAL,API: === Token Refresh Scenario ===
+    
+    MSAL->>MSAL: User makes API request
+    MSAL->>Cache: Get access token from cache
+    Cache->>MSAL: Token: eyJ0eXAi...<br/>Expires: 2025-11-03 14:00:00
+    
+    MSAL->>MSAL: Check current time:<br/>2025-11-03 13:55:00
+    
+    MSAL->>MSAL: Calculate time remaining:<br/>5 minutes
+    
+    MSAL->>MSAL: Check refresh threshold:<br/>Token expires in < 5 min?
+    
+    alt Token expires soon or expired
+        MSAL->>MSAL: Token needs refresh
+        
+        MSAL->>Cache: Get refresh token
+        Cache->>MSAL: Refresh token: [refresh-token]
+        
+        MSAL->>AZURE: Silent token refresh:<br/>POST /oauth2/v2.0/token<br/>grant_type=refresh_token<br/>client_id=[SPA-CLIENT-ID]<br/>refresh_token=[refresh-token]<br/>scope=api://[API-ID]/access_as_user
+        
+        AZURE->>AZURE: Validate refresh token
+        AZURE->>AZURE: Check token not revoked
+        AZURE->>AZURE: Check token not expired
+        
+        alt Refresh token valid
+            AZURE->>AZURE: Generate new access token
+            AZURE->>AZURE: Generate new refresh token<br/>(rotate refresh token)
+            AZURE->>AZURE: Generate new ID token
+            
+            AZURE->>MSAL: Response:<br/>{<br/>  access_token: eyJ0eXAi...NEW,<br/>  refresh_token: ...NEW,<br/>  id_token: eyJ0eXAi...NEW,<br/>  expires_in: 3600<br/>}
+            
+            MSAL->>Cache: Update cache:<br/>- Remove old access token<br/>- Store new access token<br/>- Store new refresh token<br/>- Store new ID token
+            
+            MSAL->>MSAL: Token refresh successful ✅
+            MSAL->>API: Continue with API request<br/>Authorization: Bearer {NEW-TOKEN}
+        else Refresh token invalid
+            AZURE->>MSAL: Error: AADSTS700082<br/>Refresh token expired
+            
+            MSAL->>MSAL: Clear all cached tokens
+            MSAL->>MSAL: Trigger interactive login
+            
+            MSAL->>AZURE: Redirect to login<br/>(user must authenticate again)
+        end
+    else Token still valid
+        MSAL->>MSAL: Token OK, use cached token ✅
+        MSAL->>API: Continue with API request<br/>Authorization: Bearer {CACHED-TOKEN}
+    end
+    
+    Note over MSAL,API: === Backend Receives Request ===
+    
+    API->>API: Validate token signature
+    API->>API: Check token expiration
+    
+    alt Token valid
+        API->>API: Process request ✅
+        API->>MSAL: HTTP 200 OK<br/>{data: [...]}
+    else Token invalid
+        API->>MSAL: HTTP 401 Unauthorized<br/>Token expired
+        
+        MSAL->>MSAL: Detect 401 error
+        MSAL->>AZURE: Attempt silent refresh
+        AZURE->>MSAL: New token
+        MSAL->>API: Retry request with new token
+    end
+    
+    Note over MSAL,API: ✅ Token Refresh Complete
 ```
 
 ---
 
-**🚀 You did it! Sakura V2 is now secured with Azure AD!**
+## 10. Logout Flow
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant A as Angular App
+    participant MSAL as MSAL Service
+    participant Cache as LocalStorage
+    participant AZURE as Azure AD
+
+    Note over U,AZURE: === User Initiates Logout ===
+    
+    U->>A: Click "Logout" button
+    A->>MSAL: msalService.logoutRedirect()
+    
+    MSAL->>MSAL: Build logout URL:<br/>https://login.microsoftonline.com/<br/>[tenant]/oauth2/v2.0/logout?<br/>post_logout_redirect_uri=<br/>http://localhost:4200
+    
+    MSAL->>Cache: Clear local tokens:<br/>- msal.account.keys<br/>- msal.idtoken.*<br/>- msal.accesstoken.*
+    
+    Cache->>MSAL: Cache cleared ✅
+    
+    MSAL->>AZURE: Redirect browser to:<br/>Azure AD logout endpoint
+    
+    Note over U,AZURE: === Azure AD Logout ===
+    
+    AZURE->>AZURE: Receive logout request
+    AZURE->>AZURE: Validate redirect URI
+    AZURE->>AZURE: Clear Azure AD session cookies:<br/>- AADSSO cookies<br/>- Session cookies
+    
+    AZURE->>AZURE: Logout complete in Azure AD
+    
+    AZURE->>A: Redirect back to:<br/>http://localhost:4200?<br/>post_logout_redirect_uri=<br/>http://localhost:4200
+    
+    Note over U,AZURE: === App Post-Logout ===
+    
+    A->>A: App loads after redirect
+    A->>MSAL: handleRedirectPromise()
+    MSAL->>MSAL: Check for logout response
+    MSAL->>MSAL: Verify no active account
+    
+    MSAL->>MSAL: Clear activeAccount
+    MSAL->>A: Logout complete event
+    
+    A->>A: Route Guard checks:<br/>MsalGuard.canActivate()
+    A->>MSAL: getActiveAccount()
+    MSAL->>A: null (no account)
+    
+    A->>A: Redirect to /login page
+    A->>U: Show "Sign in with Microsoft" button
+    
+    Note over U,AZURE: ✅ User Logged Out
+    
+    Note over U,AZURE: === Multi-Tab Logout ===
+    
+    U->>A: User has multiple tabs open
+    U->>A: Logout in Tab 1
+    
+    A->>MSAL: logoutRedirect() in Tab 1
+    MSAL->>Cache: Clear localStorage
+    MSAL->>AZURE: Azure AD logout
+    
+    Note over U,AZURE: localStorage is shared<br/>across all tabs
+    
+    A->>A: Tab 2 detects logout:<br/>storage event listener
+    A->>A: Tab 2 clears state
+    A->>A: Tab 2 redirects to login
+    
+    Note over U,AZURE: ✅ All Tabs Logged Out
+```
+
+---
+
+## 11. Multi-Tab Session Management
+
+```mermaid
+graph TD
+    A[User Opens Tab 1] --> B[Tab 1: MSAL Initializes]
+    B --> C[Tab 1: Check localStorage]
+    C --> D{Tokens in<br/>localStorage?}
+    
+    D -->|No| E[Tab 1: User logs in]
+    E --> F[Tab 1: Tokens cached in localStorage]
+    F --> G[Tab 1: setActiveAccount]
+    G --> H[Tab 1: User authenticated ✅]
+    
+    D -->|Yes| I[Tab 1: Use cached tokens]
+    I --> H
+    
+    H --> J[User Opens Tab 2]
+    J --> K[Tab 2: MSAL Initializes]
+    K --> L[Tab 2: Check localStorage]
+    L --> M{Tokens in<br/>localStorage?}
+    
+    M -->|Yes| N[Tab 2: Use cached tokens]
+    N --> O[Tab 2: getAllAccounts]
+    O --> P[Tab 2: setActiveAccount]
+    P --> Q[Tab 2: User authenticated ✅<br/>No login required!]
+    
+    M -->|No| R[Tab 2: Redirect to login]
+    R --> S[Tab 2: User logs in]
+    S --> T[Tab 2: Tokens cached]
+    T --> Q
+    
+    subgraph "localStorage Sharing"
+        F --> U[localStorage<br/>msal.account.keys<br/>msal.idtoken.*<br/>msal.accesstoken.*]
+        T --> U
+        I --> U
+        N --> U
+    end
+    
+    subgraph "Storage Event Listeners"
+        U --> V[Tab 1: storage event listener]
+        U --> W[Tab 2: storage event listener]
+        
+        V --> X{Storage<br/>Changed?}
+        W --> Y{Storage<br/>Changed?}
+        
+        X -->|Yes| Z[Tab 1: Refresh account state]
+        Y -->|Yes| AA[Tab 2: Refresh account state]
+        
+        Z --> AB[Tab 1: Update UI]
+        AA --> AC[Tab 2: Update UI]
+    end
+    
+    subgraph "Logout Scenario"
+        AD[User Logs Out in Tab 1] --> AE[Tab 1: Clear localStorage]
+        AE --> AF[localStorage cleared]
+        AF --> AG[Tab 2: storage event fires]
+        AG --> AH[Tab 2: Detect tokens removed]
+        AH --> AI[Tab 2: Clear activeAccount]
+        AI --> AJ[Tab 2: Redirect to login]
+    end
+    
+    subgraph "Token Refresh Scenario"
+        AK[Tab 1: Token expires] --> AL[Tab 1: Silent refresh]
+        AL --> AM[Tab 1: Update localStorage]
+        AM --> AN[Tab 2: storage event fires]
+        AN --> AO[Tab 2: Read new token]
+        AO --> AP[Tab 2: Use new token ✅]
+    end
+    
+    style H fill:#90EE90
+    style Q fill:#90EE90
+    style U fill:#e1f5ff
+    style AF fill:#FFB6C1
+```
+
+---
+
+## 📝 Technical Details Summary
+
+### Frontend Components
+
+| Component | Technology | Purpose |
+|-----------|------------|---------|
+| **MSAL Browser** | `@azure/msal-browser` | Core authentication library, token cache management |
+| **MSAL Angular** | `@azure/msal-angular` | Angular wrapper, route guards, HTTP interceptors |
+| **PublicClientApplication** | MSAL class | Main MSAL instance, handles OAuth flow |
+| **MsalInterceptor** | Angular interceptor | Automatically adds tokens to API requests |
+| **MsalGuard** | Angular route guard | Protects routes, redirects to Azure AD if needed |
+| **LocalStorage Cache** | Browser storage | Stores tokens, accounts, refresh tokens |
+
+### Backend Components
+
+| Component | Technology | Purpose |
+|-----------|------------|---------|
+| **Microsoft.Identity.Web** | NuGet package | JWT token validation, Azure AD integration |
+| **JwtBearerAuthentication** | ASP.NET middleware | Validates Bearer tokens in Authorization header |
+| **JwtSecurityTokenHandler** | .NET class | Parses and validates JWT token structure |
+| **ClaimsPrincipal** | .NET class | Represents authenticated user with claims |
+| **Authorization Policies** | ASP.NET Core | Role-based access control (Requester, Approver, Admin) |
+
+### Token Types
+
+| Token | Purpose | Lifetime | Storage |
+|-------|---------|----------|---------|
+| **ID Token** | User identity information | 1 hour | Frontend localStorage |
+| **Access Token** | API authorization | 1 hour | Frontend localStorage |
+| **Refresh Token** | Silent token renewal | 90 days | Frontend localStorage (secure) |
+
+### Database Tables for Roles
+
+| Table | Purpose | Key Columns |
+|-------|---------|-------------|
+| **core.Users** | User cache/provisioning | UserId, Email, Name, ObjectId |
+| **sec.OLSApprovers** | Organization-level approvers | UserId, DimensionCode |
+| **sec.RLSApprovers** | Regional-level approvers | UserId, DimensionCode |
+| **core.Workspaces** | Workspace ownership | WorkspaceId, OwnerId |
+| **config.AdminUsers** | Sakura administrators | UserId, IsSakuraAdmin |
+
+---
+
+**Document Status**: ✅ Complete  
+**Last Updated**: November 2025  
+**Next Review**: After Azure AD implementation
 
