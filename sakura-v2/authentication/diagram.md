@@ -899,17 +899,17 @@ flowchart TB
 
 ```mermaid
 flowchart LR
-  T[Bearer token] --> V[Validate token]
-  V --> O[Extract oid]
-  O --> R[Resolve oid to User]
-  R --> U[UserId, Email from User table]
-  U --> S{In SupportUsers?}
-  S -->|Yes| GW[GetAnyWorkspaces]
-  S -->|No| GF[GetWorkspacesForUserAsync(Email)]
-  U --> P{In PlatformAdmins?}
-  P -->|Yes| PA[Allow admin actions]
-  P -->|No| PN[403 on admin actions]
-  GW --> RES[Response: data]
+  T["Bearer token"] --> V["Validate token"]
+  V --> O["Extract oid"]
+  O --> R["Resolve oid to User"]
+  R --> U["UserId, Email from User table"]
+  U --> S{"Support user?"}
+  S -->|Yes| GW["GetAnyWorkspaces"]
+  S -->|No| GF["GetWorkspacesForUserAsync"]
+  U --> P{"Platform admin?"}
+  P -->|Yes| PA["Allow admin actions"]
+  P -->|No| PN["403 on admin actions"]
+  GW --> RES["Response: data"]
   GF --> RES
   PA --> RES
   PN --> RES
