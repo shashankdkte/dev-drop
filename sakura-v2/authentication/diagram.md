@@ -661,16 +661,16 @@ sequenceDiagram
 
 ```mermaid
 flowchart TB
-  A[Request: GET /workspaces + Bearer token] --> B[Backend: Validate token]
-  B --> C[Extract oid from token]
-  C --> D[Resolve oid to User table]
-  D --> E[ICurrentUserService: UserId, Email]
-  E --> F{UserId in SupportUsers?}
-  F -->|Yes| G[GetAnyWorkspacesAsync]
-  F -->|No| H[GetWorkspacesForUserAsync(Email)]
-  G --> I[Return workspace list]
+  A["Request: GET /workspaces + Bearer token"] --> B["Backend: Validate token"]
+  B --> C["Extract oid from token"]
+  C --> D["Resolve oid to User table"]
+  D --> E["ICurrentUserService: UserId, Email"]
+  E --> F{"UserId in SupportUsers?"}
+  F -->|Yes| G["GetAnyWorkspacesAsync"]
+  F -->|No| H["GetWorkspacesForUserAsync(Email)"]
+  G --> I["Return workspace list"]
   H --> I
-  I --> J[Frontend receives only allowed workspaces]
+  I --> J["Frontend receives only allowed workspaces"]
 ```
 
 ---
