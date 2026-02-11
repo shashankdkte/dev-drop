@@ -100,7 +100,7 @@ Use this to get YAML for **every** pipeline in the project at once (including Da
 
 ### Option A: PowerShell script (export by pipeline ID)
 
-Save the script below, fill in the variables at the top, then run it. It will create one file per pipeline under `Docs/pipelines-export/`.
+Save the script below, fill in the variables at the top, then run it **from the repo root** (e.g. `C:\Development\Sakura`). It creates one **.json file per pipeline** under `Docs/pipelines-export/`. Each JSON is the pipeline **metadata** (name, id, repo, `process.yamlFilename` = path to the YAML in the repo). The API does **not** return the YAML content—use the path in the JSON or the table at the top of this doc to open the actual YAML file.
 
 ```powershell
 # Fill these in
@@ -125,23 +125,22 @@ $headers = @{ Authorization = "Basic $base64Auth" }
 $exportDir = "Docs/pipelines-export"
 if (-not (Test-Path $exportDir)) { New-Item -ItemType Directory -Path $exportDir -Force }
 
+# Use your org URL (e.g. https://dev.azure.com/danfinancebi for Azure DevOps)
 foreach ($name in $pipelineIds.Keys) {
     $id = $pipelineIds[$name]
     $uri = "$orgUrl/$project/_apis/build/definitions/$id`?api-version=7.0"
     try {
         $def = Invoke-RestMethod -Uri $uri -Headers $headers -Method Get
-        $yaml = $def.process.yamlFilename
-        if ($def.configuration) {
-            # If definition stores YAML inline or we have config, save it
-            $outFile = Join-Path $exportDir "$name.yaml"
-            $def | ConvertTo-Json -Depth 20 | Set-Content $outFile -Encoding UTF8
-            Write-Host "Exported $name to $outFile"
-        }
+        $outFile = Join-Path $exportDir "$name.json"
+        $def | ConvertTo-Json -Depth 25 | Set-Content $outFile -Encoding UTF8
+        Write-Host "Exported $name to $outFile"
     } catch {
         Write-Warning "Failed $name : $_"
     }
 }
 ```
+
+**If no files appear:** Run from repo root; PAT must have **Build (Read)**; use `$orgUrl = "https://dev.azure.com/danfinancebi"` (no trailing slash); pipeline IDs must match your project (copy `definitionId=XXX` from each pipeline URL).
 
 To get **actual YAML content** (when the pipeline is stored as YAML in the definition), Azure DevOps often serves it from the repo. So the most reliable “get YAML” flow is:
 
