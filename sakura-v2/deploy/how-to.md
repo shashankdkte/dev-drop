@@ -38,6 +38,28 @@ Different parts of the system (database, backend, frontend) use **Build** vs **R
 
 ---
 
+## Why renaming the pipeline YAML file doesn’t trigger (or breaks) the pipeline
+
+**Azure DevOps ties each pipeline to a fixed YAML file path.** When you create the pipeline, you choose “Existing Azure Pipelines YAML file” and set the path (e.g. `FE/application/azure-static-web-apps-orange-sand-03a59b103.yml`). That path is stored in the pipeline definition.
+
+When you **only rename the file in the repo** (e.g. to `azure-dev-build-release-pipeline.yml`):
+
+1. The pipeline definition in Azure DevOps still points at the **old path**.
+2. On push, Azure evaluates triggers and then loads the YAML from that **stored path**.
+3. The old path no longer exists → the pipeline either **fails** (“file not found”) or **doesn’t run**, because the definition can’t be loaded.
+
+So the trigger doesn’t “see” the rename as “run this pipeline” – it still tries to load the old path and fails.
+
+**Correct way to rename the pipeline file:**
+
+1. **In Azure DevOps:** Pipelines → open the pipeline → **Edit** (or ⋯ → Edit).
+2. Use **…** next to the YAML path and change it to the **new** path (e.g. `FE/application/azure-dev-build-release-pipeline.yml`) → **Save** (and run once if needed).
+3. **In the repo:** Rename the file to match (e.g. `azure-dev-build-release-pipeline.yml`) and push.
+
+Do step 2 **before** or **in the same change** as step 3. If you already renamed only in the repo, either revert the rename (as you did) or update the pipeline’s YAML path in Azure DevOps to the new filename and push again so the file exists at that path.
+
+---
+
 ## Method 1: From the repo (easiest when YAML is in repo)
 
 1. Open the path in the table above in your repo (e.g. in Cursor/VS Code or on the **Repos** tab in Azure DevOps).
