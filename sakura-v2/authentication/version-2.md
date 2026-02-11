@@ -6,6 +6,117 @@ This document is a **zero-assumption, step-by-step roadmap** so that authenticat
 - **User table:** One row per user (EntraObjectId, Email, DisplayName). **Email change** = update this single row; no mass update of Workspaces or approvers.
 - **All role data in DB:** Support, Platform Admin, workspace Owner/Approver, and RLS/OLS approvers are in Sakura DB (keyed by UserId or EntraObjectId, or by email with “current email” from User table). No dependency on Entra groups or token roles for permissions.
 
+---
+
+## Why we moved from security-group–based to DB-based roles
+
+Originally, roles like **Support** and **Platform Administrator** can be modelled with **Entra ID security groups** or **App roles**: you put users in groups (e.g. `Sakura_Support`, `Sakura_Admins`), configure the token to include a **groups** (or **roles**) claim, and the backend decides access by reading those claims. This works for small teams and simple setups. For Sakura we moved to a **DB-based** approach for roles so that the system stays **accurate**, **performant**, and **scalable** at tens of thousands of users, and so that **email changes** are easy to handle without touching Entra or mass-updating data. Below is the rationale, with diagrams.
+
+### Security-group–based approach (what we moved away from)
+
+In this model, role membership lives in **Entra**: security groups or App role assignments. The token carries that information so the backend can authorize without a DB lookup for roles.
+
+```mermaid
+flowchart LR
+  subgraph Entra["Entra ID"]
+    UserDir[Users]
+    SG_Support[Sakura_Support group]
+    SG_Admins[Sakura_Admins group]
+    UserDir --> SG_Support
+    UserDir --> SG_Admins
+  end
+
+  subgraph Token["Token (JWT)"]
+    OID[oid]
+    Email[email]
+    Groups["groups (IDs of all groups user is in)"]
+  end
+
+  subgraph Backend["Backend"]
+    Check[Check: groups contains Support ID?]
+    Allow[Allow / Deny]
+  end
+
+  Entra --> Token
+  Token --> Check
+  Check --> Allow
+```
+
+**Why we moved away from it:**
+
+| Issue | What happens |
+|-------|------------------|
+| **Token size** | Entra limits token size. Adding many groups (or roles) inflates the token; with large tenants or many app-specific groups, the token can grow too large or hit limits. |
+| **Groups overage** | If a user is in **more than a few groups** (e.g. 200+), Entra does **not** put all group IDs in the token. Instead the token contains an "overage" marker, and the backend must call **Microsoft Graph** to resolve group membership. That adds latency, dependency on Graph, and complexity. |
+| **Scale (70k+ users)** | With tens of thousands of users, managing "who is Support" or "who is Admin" only in Entra means either few, large groups (hard to reason about) or many groups and token/overage issues. Role lifecycle (onboarding, offboarding, audits) is split between Entra and the app. |
+| **Email change** | When a user's email changes in Entra, group membership is unchanged—so roles still work. But the app often stores **email** elsewhere (e.g. WorkspaceOwner, approver lists). Then you must either mass-update those references or maintain a separate mapping. The **security group** model doesn't solve that; a **stable identity (oid) + DB** model does. |
+
+So we keep **Entra for authentication** (who you are: **oid** + email in the token) and move **authorization** (Support, Platform Admin, workspace visibility) into **Sakura DB**, keyed by **oid** or an internal **UserId** derived from it.
+
+### DB-based approach (what we use now — Approach 3)
+
+Here, the token only needs to identify the user (**oid** and optionally **email**). The backend resolves **oid** to a **User** row in the DB and then checks **role and workspace data only in the DB**. No groups or roles claim required; no Graph call for overage.
+
+```mermaid
+flowchart LR
+  subgraph Entra["Entra ID"]
+    UserDir[Users]
+  end
+
+  subgraph Token["Token (JWT) — small"]
+    OID[oid]
+    Email[email]
+  end
+
+  subgraph Backend["Backend"]
+    Resolve[Resolve oid → User row]
+    UserTable[(User table)]
+    RoleTables[(SupportUsers, PlatformAdmins, Workspaces…)]
+    Check[Check roles in DB]
+    Allow[Allow / Deny]
+  end
+
+  Entra --> Token
+  Token --> Resolve
+  Resolve --> UserTable
+  UserTable --> Check
+  RoleTables --> Check
+  Check --> Allow
+```
+
+**Why this fits us:**
+
+| Benefit | How it helps |
+|---------|------------------|
+| **Small, stable token** | Token stays small (oid + email). No groups or roles claim; no token bloat and no groups overage, regardless of how many Entra groups the user belongs to. |
+| **One place for roles** | Support, Platform Admin, workspace Owner/Approver, and RLS/OLS approvers all live in **Sakura DB**. Backend does one lightweight lookup (oid → User), then uses **UserId** or **EntraObjectId** (and, for legacy CSV, **current email** from the User table) for all permission checks. |
+| **Scales to 70k+ users** | No dependency on Entra group membership for app roles. Add/remove Support or Admins by inserting/deleting rows in DB tables. No Graph calls; no token limits tied to group count. |
+| **Email change = one row** | When email changes in Entra, the next login sends the **same oid** and **new email**. Backend updates the **User** row (Email, UpdatedAt). Workspaces and approver tables that are keyed by **UserId** or **oid** need no change; those that still match by email use **User.Email** at runtime, so one update keeps everything consistent. |
+
+### Side-by-side (high level)
+
+```mermaid
+flowchart TB
+  subgraph Old["Security-group–based (old)"]
+    A1[Entra: user in groups] --> A2[Token: oid + email + groups]
+    A2 --> A3[Backend: read groups from token]
+    A3 --> A4{Group ID in list?}
+    A4 --> A5[Risk: overage → Graph call]
+    A4 --> A6[Risk: token size]
+  end
+
+  subgraph New["DB-based — Approach 3 (current)"]
+    B1[Entra: user signs in] --> B2[Token: oid + email only]
+    B2 --> B3[Backend: oid → User table]
+    B3 --> B4[Backend: UserId/oid → role tables in DB]
+    B4 --> B5[No overage, no token bloat]
+  end
+```
+
+In short: we moved from a **security-group–based** approach to a **DB-based** one so that **identity** stays in Entra (oid + email in the token) and **all role and permission data** lives in the Sakura DB, keyed by a stable identifier. That keeps the token small, avoids groups overage and Graph dependency, scales to very large user counts, and makes email changes a single-row update in the User table.
+
+---
+
 Every step states **which portal or system** to use, **what to change**, **for which environment**, and **why** in terms of **accurate**, **performant**, **scalable**, and **consistent** behaviour.
 
 ---
