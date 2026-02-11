@@ -9,7 +9,6 @@ Three ways to get pipeline YAML: **from the repo**, **from Azure DevOps UI**, or
 | Pipeline name (from Azure DevOps) | Type | YAML in this repo? | Path |
 |----------------------------------|------|--------------------|------|
 | **Sakura Frontend** | Build + Release (combined) | Yes | `FE/application/azure-pipelines.yml` |
-| **azure-static-web-apps-orange-sand-03...** | Build + Release (combined) | Yes | `FE/application/azure-static-web-apps-orange-sand-03a59b103.yml` |
 | **Sakura Backend Deploy DEV** | **Release** (deploy only) | Yes | `BE_Main/Sakura_Backend/AzureDevDeploymentPipeline.yaml` |
 | **Sakura Backend Build DEV** | **Build** (artifact only) | Yes | `BE_Main/Sakura_Backend/AzureDevBuildPipeline.yaml` |
 | **Sakura Backend PR Quick Build** | Build only (PR validation) | Yes | `BE_Main/Sakura_Backend/AzurePRQuickBuildPipeline.yaml` |
@@ -29,13 +28,13 @@ Different parts of the system (database, backend, frontend) use **Build** vs **R
 |------|--------------------|----------------------|----------------|
 | **Database** | **Sakura Database Build DEV** – compiles/packages the database (e.g. .dacpac or scripts). | *(None in list – deploy may be manual or a separate pipeline.)* | Build produces a DB artifact (package or scripts). Deploy is often run less often or to multiple envs (dev → test → prod), so it may be a separate release pipeline or manual. |
 | **Backend** | **Sakura Backend Build DEV** – compile, test, publish .NET → produces a **zip artifact**. **Sakura Backend DEV Build** – alternate build (e.g. different branch/trigger). **Sakura Backend PR Quick Build** – build + test on PRs only, no deploy. | **Sakura Backend Deploy DEV** – takes the **Build** artifact and deploys it to the dev App Service. | Build runs on every commit (or PR); it produces one artifact. Release runs when we want to deploy that same artifact to an environment (dev, then later test/prod). One build, many possible deploys. |
-| **Frontend** | Both **Sakura Frontend** and **azure-static-web-apps-orange-sand-03...** do **build and deploy in one pipeline** (no separate release). | Same pipelines – they build the app and deploy to the Static Web App in a single run. | Static Web Apps are often wired so “build + deploy” is one step (e.g. Oryx build on Azure, then deploy). So you see “Build + Release (combined)” – no separate release pipeline. |
+| **Frontend** | **Sakura Frontend** (one pipeline) – **build and deploy in one pipeline** (no separate release). | Same pipeline – builds the app and deploys to the Static Web App in a single run. | Static Web Apps are often wired so “build + deploy” is one step (e.g. Oryx build on Azure, then deploy). So you see “Build + Release (combined)” – no separate release pipeline. |
 
 **Summary:**
 
 - **Backend:** Explicit split – **Build** = produce artifact; **Release** = deploy that artifact to an environment. Makes it easy to deploy the same build to test/prod later.
 - **Database:** **Build** = produce DB package/scripts; release/deploy may be separate or manual.
-- **Frontend:** No split in the list – each frontend pipeline is **build + release combined** in a single pipeline.
+- **Frontend:** One pipeline only – **Sakura Frontend** does build + release combined (no separate release pipeline).
 
 ---
 
@@ -90,7 +89,6 @@ $pat = "YOUR_PAT_HERE"
 # Pipeline display name -> definition id (get from pipeline URL: definitionId=XXX)
 $pipelineIds = @{
     "Sakura-Frontend" = 101
-    "azure-static-web-apps-orange-sand-03" = 102
     "Sakura-Backend-Deploy-DEV" = 103
     "Sakura-Backend-Build-DEV" = 104
     "Sakura-Database-Build-DEV" = 105
