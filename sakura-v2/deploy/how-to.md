@@ -8,7 +8,7 @@ Three ways to get pipeline YAML: **from the repo**, **from Azure DevOps UI**, or
 
 | Pipeline name (from Azure DevOps) | Type | YAML in this repo? | Path |
 |----------------------------------|------|--------------------|------|
-| **azure-static-web-apps-orange-sand-03...** (Frontend) | Build + Release (combined) | Yes | `FE/application/azure-static-web-apps-orange-sand-03a59b103.yml` |
+| **Sakura_Frontend_Dev_Build_Release** (Frontend) | Build + Release (combined) | Yes | `FE/application/azure-dev-build-release-pipeline.yml` |
 | **Sakura Backend Deploy DEV** | **Release** (deploy only) | Yes | `BE_Main/Sakura_Backend/AzureDevDeploymentPipeline.yaml` |
 | **Sakura Backend Build DEV** | **Build** (artifact only) | Yes | `BE_Main/Sakura_Backend/AzureDevBuildPipeline.yaml` |
 | **Sakura Backend PR Quick Build** | Build only (PR validation) | Yes | `BE_Main/Sakura_Backend/AzurePRQuickBuildPipeline.yaml` |
@@ -28,19 +28,19 @@ Different parts of the system (database, backend, frontend) use **Build** vs **R
 |------|--------------------|----------------------|----------------|
 | **Database** | **Sakura Database Build DEV** – compiles/packages the database (e.g. .dacpac or scripts). | *(None in list – deploy may be manual or a separate pipeline.)* | Build produces a DB artifact (package or scripts). Deploy is often run less often or to multiple envs (dev → test → prod), so it may be a separate release pipeline or manual. |
 | **Backend** | **Sakura Backend Build DEV** – compile, test, publish .NET → produces a **zip artifact**. **Sakura Backend DEV Build** – alternate build (e.g. different branch/trigger). **Sakura Backend PR Quick Build** – build + test on PRs only, no deploy. | **Sakura Backend Deploy DEV** – takes the **Build** artifact and deploys it to the dev App Service. | Build runs on every commit (or PR); it produces one artifact. Release runs when we want to deploy that same artifact to an environment (dev, then later test/prod). One build, many possible deploys. |
-| **Frontend** | **azure-static-web-apps-orange-sand-03...** – single pipeline that does **build and deploy** in one run. | Same pipeline – builds the app and deploys to the Static Web App in a single run. | Static Web Apps are often wired so “build + deploy” is one step (e.g. Oryx build on Azure, then deploy). So you see “Build + Release (combined)” – no separate release pipeline. |
+| **Frontend** | **Sakura_Frontend_Dev_Build_Release** – single pipeline that does **build and deploy** in one run. | Same pipeline – builds the app and deploys to the Static Web App in a single run. | Static Web Apps are often wired so “build + deploy” is one step (e.g. Oryx build on Azure, then deploy). So you see “Build + Release (combined)” – no separate release pipeline. |
 
 **Summary:**
 
 - **Backend:** Explicit split – **Build** = produce artifact; **Release** = deploy that artifact to an environment. Makes it easy to deploy the same build to test/prod later.
 - **Database:** **Build** = produce DB package/scripts; release/deploy may be separate or manual.
-- **Frontend:** One pipeline only – **azure-static-web-apps-orange-sand-03...** does **build + release combined** in a single run.
+- **Frontend:** One pipeline only – **Sakura_Frontend_Dev_Build_Release** does **build + release combined** in a single run.
 
 ---
 
 ## Why renaming the pipeline YAML file doesn’t trigger (or breaks) the pipeline
 
-**Azure DevOps ties each pipeline to a fixed YAML file path.** When you create the pipeline, you choose “Existing Azure Pipelines YAML file” and set the path (e.g. `FE/application/azure-static-web-apps-orange-sand-03a59b103.yml`). That path is stored in the pipeline definition.
+**Azure DevOps ties each pipeline to a fixed YAML file path.** When you create the pipeline, you choose “Existing Azure Pipelines YAML file” and set the path (e.g. `FE/application/azure-dev-build-release-pipeline.yml`). That path is stored in the pipeline definition.
 
 When you **only rename the file in the repo** (e.g. to `azure-dev-build-release-pipeline.yml`):
 
@@ -54,7 +54,7 @@ So the trigger doesn’t “see” the rename as “run this pipeline” – it 
 
 1. **In Azure DevOps:** Pipelines → open the pipeline → **Edit** (or ⋯ → Edit).
 2. Use **…** next to the YAML path and change it to the **new** path (e.g. `FE/application/azure-dev-build-release-pipeline.yml`) → **Save** (and run once if needed).
-3. **In the repo:** Rename the file to match (e.g. `azure-dev-build-release-pipeline.yml`) and push.
+3. **In the repo:** Rename the file to match and push.
 
 Do step 2 **before** or **in the same change** as step 3. If you already renamed only in the repo, either revert the rename (as you did) or update the pipeline’s YAML path in Azure DevOps to the new filename and push again so the file exists at that path.
 
@@ -110,7 +110,7 @@ $pat = "YOUR_PAT_HERE"
 
 # Pipeline display name -> definition id (get from pipeline URL: definitionId=XXX)
 $pipelineIds = @{
-    "azure-static-web-apps-orange-sand-03" = 102
+    "Sakura_Frontend_Dev_Build_Release" = 102
     "Sakura-Backend-Deploy-DEV" = 103
     "Sakura-Backend-Build-DEV" = 104
     "Sakura-Database-Build-DEV" = 105
