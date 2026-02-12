@@ -73,22 +73,34 @@ erDiagram
   Workspaces ||--o{ WorkspaceSecurityModels : "WorkspaceId"
   WorkspaceSecurityModels ||--o{ RLS_Approvers : "SecurityModelId"
   PermissionRequests ||--o{ PermissionHeaders : "PermissionRequestId"
-  User : Id PK
-  User : EntraObjectId UK
-  User : Email
-  RefreshToken : Id PK
-  RefreshToken : Token hash
-  RefreshToken : UserId FK
-  RefreshToken : ExpiresAt
-  RefreshToken : Revoked
-  SupportUsers : EntraObjectId or UserId
-  PlatformAdmins : EntraObjectId or UserId
-  Workspaces : Id PK
-  Workspaces : WorkspaceOwner CSV
-  Workspaces : WorkspaceTechOwner CSV
-  Workspaces : WorkspaceApprover CSV
-  PermissionRequests : CreatedBy email
-  PermissionRequests : WorkspaceId FK
+  User {
+    int Id PK
+    string EntraObjectId UK
+    string Email
+  }
+  RefreshToken {
+    int Id PK
+    string Token_hash
+    int UserId FK
+    datetime ExpiresAt
+    bool Revoked
+  }
+  SupportUsers {
+    string EntraObjectId_or_UserId
+  }
+  PlatformAdmins {
+    string EntraObjectId_or_UserId
+  }
+  Workspaces {
+    int Id PK
+    string WorkspaceOwner CSV
+    string WorkspaceTechOwner CSV
+    string WorkspaceApprover CSV
+  }
+  PermissionRequests {
+    string CreatedBy
+    int WorkspaceId FK
+  }
 ```
 
 **Note:** **User** is the central identity table (EntraObjectId = oid from token). **Workspaces** do not have a FK to User; matching is by **User.Email** in the CSV columns. **SupportUsers** and **PlatformAdmins** reference User by **UserId** or **EntraObjectId**.
@@ -117,6 +129,142 @@ erDiagram
 - **Workspaces** ↔ **User**: no FK; match **User.Email** to WorkspaceOwner / WorkspaceTechOwner / WorkspaceApprover (CSV).
 - **PermissionRequests** → **Workspaces** (WorkspaceId); **CreatedBy** = email (same as User.Email).
 - **RLS/OLS approver tables** → workspace/security model; approver column = User.Email or UserId.
+
+### 2.3 SQL Server: column names and data types
+
+Auth-related tables with correct SQL Server column names and data types. Tables marked *(planned)* are not yet in the database.
+
+**dbo.User** *(planned)*
+
+| Column | Data type | Notes |
+|--------|-----------|--------|
+| Id | INT NOT NULL IDENTITY | PK |
+| EntraObjectId | NVARCHAR(255) NOT NULL | Unique; token `oid` |
+| Email | NVARCHAR(255) NOT NULL | Current email |
+| DisplayName | NVARCHAR(255) NULL | |
+| CreatedAt | DATETIME2(0) NOT NULL | |
+| UpdatedAt | DATETIME2(0) NOT NULL | |
+
+**dbo.RefreshToken**
+
+| Column | Data type | Notes |
+|--------|-----------|--------|
+| Id | INT NOT NULL IDENTITY | PK |
+| Token | NVARCHAR(255) NOT NULL | Token or hash |
+| UserId | NVARCHAR(255) NOT NULL | References User (logical); consider INT if User.Id is INT |
+| CreatedAt | DATETIME2(0) NOT NULL | |
+| CreatedByIp | NVARCHAR(50) NOT NULL | |
+| ExpiresAt | DATETIME2(0) NOT NULL | |
+| Revoked | BIT NOT NULL DEFAULT 1 | |
+| RevokedAt | DATETIME2(0) NULL | |
+
+**dbo.SupportUsers** *(planned)*
+
+| Column | Data type | Notes |
+|--------|-----------|--------|
+| Id | INT NOT NULL IDENTITY | PK (optional) |
+| EntraObjectId | NVARCHAR(255) NOT NULL | Or UserId INT FK to User |
+
+**dbo.PlatformAdmins** *(planned)*
+
+| Column | Data type | Notes |
+|--------|-----------|--------|
+| Id | INT NOT NULL IDENTITY | PK (optional) |
+| EntraObjectId | NVARCHAR(255) NOT NULL | Or UserId INT FK to User |
+
+**dbo.Workspaces**
+
+| Column | Data type | Notes |
+|--------|-----------|--------|
+| Id | INT NOT NULL IDENTITY | PK |
+| WorkspaceCode | NVARCHAR(50) NOT NULL | Unique |
+| WorkspaceName | NVARCHAR(255) NOT NULL | |
+| WorkspaceOwner | NVARCHAR(255) NOT NULL | CSV emails |
+| WorkspaceTechOwner | NVARCHAR(255) NOT NULL | CSV emails |
+| WorkspaceApprover | NVARCHAR(255) NOT NULL | CSV emails |
+| WorkspaceEntraGroupUID | NVARCHAR(255) NULL | |
+| WorkspaceTag | NVARCHAR(50) NULL | |
+| DomainLoVId | INT NOT NULL | FK to dbo.LoVs |
+| IsActive | BIT NOT NULL DEFAULT 1 | |
+| CreatedAt | DATETIME2(0) NOT NULL | |
+| CreatedBy | NVARCHAR(255) NOT NULL | |
+| UpdatedAt | DATETIME2(0) NOT NULL | |
+| UpdatedBy | NVARCHAR(255) NOT NULL | |
+
+**dbo.UserRoles**
+
+| Column | Data type | Notes |
+|--------|-----------|--------|
+| Id | INT NOT NULL IDENTITY | PK |
+| RoleName | NVARCHAR(255) NULL | Unique |
+| RoleDescription | NVARCHAR(255) NULL | |
+| RoleStatus | INT NULL DEFAULT 1 | |
+| CreatedAt | DATETIME2(0) NOT NULL | |
+| CreatedBy | NVARCHAR(255) NOT NULL | |
+| UpdatedAt | DATETIME2(0) NOT NULL | |
+| UpdatedBy | NVARCHAR(255) NOT NULL | |
+
+**dbo.PermissionRequests**
+
+| Column | Data type | Notes |
+|--------|-----------|--------|
+| Id | INT NOT NULL IDENTITY | PK |
+| RequestCode | NVARCHAR(50) NOT NULL | Unique |
+| RequestedFor | NVARCHAR(255) NOT NULL | |
+| RequestedBy | NVARCHAR(255) NOT NULL | |
+| LMApprover | NVARCHAR(255) NOT NULL | |
+| RequestStatus | INT NOT NULL DEFAULT 0 | |
+| RequestReason | NVARCHAR(255) NOT NULL | |
+| WorkspaceId | INT NOT NULL | FK to dbo.Workspaces |
+| CreatedAt | DATETIME2(0) NOT NULL | |
+| CreatedBy | NVARCHAR(255) NOT NULL | Auth: requester email |
+| UpdatedAt | DATETIME2(0) NOT NULL | |
+| UpdatedBy | NVARCHAR(255) NOT NULL | |
+
+**dbo.PermissionHeaders**
+
+| Column | Data type | Notes |
+|--------|-----------|--------|
+| Id | INT NOT NULL IDENTITY | PK |
+| PermissionRequestId | INT NOT NULL | FK to dbo.PermissionRequests |
+| PermissionType | INT NOT NULL | 0: OLS, 1: RLS |
+| ApprovalStatus | INT NOT NULL DEFAULT 0 | |
+| Approvers | NVARCHAR(1024) NOT NULL | CSV list |
+| ApprovedBy | NVARCHAR(255) NULL | |
+| ApprovedAt | DATETIME2(0) NULL | |
+| CreatedAt | DATETIME2(0) NOT NULL | |
+| CreatedBy | NVARCHAR(255) NOT NULL | |
+| UpdatedAt | DATETIME2(0) NOT NULL | |
+| UpdatedBy | NVARCHAR(255) NOT NULL | |
+
+**dbo.WorkspaceSecurityModels**
+
+| Column | Data type | Notes |
+|--------|-----------|--------|
+| Id | INT NOT NULL IDENTITY | PK |
+| WorkspaceId | INT NOT NULL | FK to dbo.Workspaces |
+| SecurityModelCode | NVARCHAR(50) NOT NULL | |
+| SecurityModelName | NVARCHAR(255) NOT NULL | |
+| IsActive | BIT NOT NULL DEFAULT 1 | |
+| CreatedAt | DATETIME2(0) NOT NULL | |
+| CreatedBy | NVARCHAR(255) NOT NULL | |
+| UpdatedAt | DATETIME2(0) NOT NULL | |
+| UpdatedBy | NVARCHAR(255) NOT NULL | |
+
+**dbo.RLSAMERApprovers** (and other RLS*Approvers)
+
+| Column | Data type | Notes |
+|--------|-----------|--------|
+| Id | INT NOT NULL IDENTITY | PK |
+| SecurityModelId | INT NOT NULL | FK to dbo.WorkspaceSecurityModels |
+| SecurityTypeLoVId | INT NOT NULL | FK to dbo.LoVs |
+| Approvers | NVARCHAR(1024) NOT NULL | CSV list; match User.Email or UserId |
+| CreatedAt | DATETIME2(0) NOT NULL | |
+| CreatedBy | NVARCHAR(255) NOT NULL | |
+| UpdatedAt | DATETIME2(0) NOT NULL | |
+| UpdatedBy | NVARCHAR(255) NOT NULL | |
+
+*System-versioned tables also have `ValidFrom` and `ValidTo` (DATETIME2(0)) in the history table.*
 
 ---
 
