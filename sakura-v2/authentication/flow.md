@@ -95,7 +95,7 @@ sequenceDiagram
   BE-->>FE: 200 + Set-Cookie refreshToken (optional)
 
   FE->>BE: GET /api/Auth/me (Bearer token)
-  BE->>BE: Validate token, oid -> User
+  BE->>BE: Validate token, resolve oid to User
   BE->>DB: SELECT User (Id, Email, DisplayName)
   BE->>DB: SELECT SupportUsers WHERE UserId/EntraObjectId
   BE->>DB: SELECT PlatformAdmins WHERE UserId/EntraObjectId
@@ -103,8 +103,8 @@ sequenceDiagram
   FE->>FE: Store in AuthService
 
   FE->>BE: GET /api/Workspaces (Bearer token)
-  BE->>BE: oid -> User; User.Email
-  BE->>DB: Is UserId in SupportUsers?
+  BE->>BE: Resolve oid to User, get Email
+  BE->>DB: Check UserId in SupportUsers
   alt Support
     BE->>DB: SELECT * FROM Workspaces (all)
   else Not Support
