@@ -93,9 +93,9 @@ erDiagram
   }
   Workspaces {
     int Id PK
-    string WorkspaceOwner CSV
-    string WorkspaceTechOwner CSV
-    string WorkspaceApprover CSV
+    string WorkspaceOwner
+    string WorkspaceTechOwner
+    string WorkspaceApprover
   }
   PermissionRequests {
     string CreatedBy
