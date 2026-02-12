@@ -236,7 +236,59 @@ flowchart TB
 
 ---
 
-## 7. Summary: Entra vs DB and session
+## 7. When does session expire?
+
+| What | Where expiry is maintained | When it expires |
+|------|----------------------------|------------------|
+| **Access token** | **Inside the token** (JWT `exp` claim). For Entra: set by Entra token lifetime policy; for backend-issued JWT: set in backend config (e.g. `Jwt:ExpiresInMinutes`). Not stored in DB. | When the clock reaches `exp`. Typical values: e.g. 1 hour. After that, the token is invalid and the backend will reject it (401). |
+| **Refresh token** | **dbo.RefreshToken.ExpiresAt** (and optionally the cookie’s expiry in the browser). | When the clock reaches **ExpiresAt**, or when the row is **Revoked** (e.g. on logout). Typical values: e.g. 7 days. |
+| **“Session” (user experience)** | — | The user is “in session” while they have a **valid access token** (and, if you use refresh, can get a new one via refresh until the refresh token expires or is revoked). Session effectively ends when: (1) access token expires and no refresh or refresh failed, or (2) user logs out (token cleared, refresh revoked). |
+
+---
+
+## 8. What happens on logout?
+
+| Step | What happens |
+|------|------------------|
+| **1. User clicks Logout** | Frontend runs logout logic (e.g. clear token, call backend logout, redirect to login). |
+| **2. Frontend** | Removes the **access token** from storage (localStorage/memory). Clears any stored user (e.g. AuthService). Optionally calls **POST /api/Auth/logout**. If refresh token was in a cookie, the backend will clear it and revoke it. |
+| **3. Backend (POST /api/Auth/logout)** | Reads the **refresh token** from the cookie (if present). Looks up the row in **dbo.RefreshToken** by token hash. Sets **Revoked = 1**, **RevokedAt = now**. Sends **Set-Cookie** to clear the refresh cookie in the browser. Does **not** store “user X is logged out” — the access token is simply no longer sent by the frontend. |
+| **4. Entra** | No action. Entra does not track “sessions”; it only issued the tokens. There is nothing to “invalidate” on the Entra side for your app. (Optional: frontend can call MSAL logout to clear Entra SSO state in the browser.) |
+| **5. DB** | Only change: **dbo.RefreshToken** row updated (**Revoked**, **RevokedAt**). No delete of User or other tables. |
+
+After logout, any request without a Bearer token (or with an old one) gets **401** from the backend. The user must sign in again to get a new access token.
+
+---
+
+## 9. Logout at each level (who does what)
+
+| Level | How logout is handled |
+|-------|------------------------|
+| **Frontend** | On logout: (1) Remove access token from storage. (2) Clear current user from AuthService. (3) Call **POST /api/Auth/logout** so the backend can revoke the refresh token and clear the cookie. (4) Redirect to login page. (5) Optional: MSAL logout to clear Entra SSO state. |
+| **Backend** | **POST /api/Auth/logout**: (1) Read refresh token from cookie. (2) Find row in **dbo.RefreshToken** by token hash. (3) Set **Revoked = 1**, **RevokedAt = now**. (4) Clear refresh cookie (Set-Cookie with empty or past expiry). (5) Return 200. No server-side “session” to destroy — only the refresh token row is updated. |
+| **Entra** | Nothing required for your app’s session. Entra does not maintain a session store for Sakura. Optional: if the frontend calls MSAL’s logout, the browser’s Entra SSO state is cleared so the next login may show the Entra login page again. |
+| **DB** | Only **dbo.RefreshToken**: update **Revoked** and **RevokedAt** for the refresh token that was in the cookie. No other tables are updated on logout. |
+
+---
+
+## 10. Why is refresh optional? (explanation)
+
+Refresh is **optional** because the app can work with **only an access token**:
+
+- **Without refresh:** User signs in → gets **access token** (e.g. 1 hour). Frontend stores it and sends it on every request. When the access token **expires**, the backend returns **401**. The frontend then **clears the token and redirects to login** — the user must sign in again. Session length is effectively the **access token lifetime** (e.g. 1 hour).
+- **With refresh:** User signs in → gets **access token** + **refresh token** (e.g. in cookie). When the access token is about to expire (or after 401), the frontend calls **POST /api/Auth/refresh** with the cookie. The backend checks **dbo.RefreshToken** (hash, **ExpiresAt**, **Revoked**) and, if valid, issues a **new access token** (and optionally rotates the refresh token). The user stays “logged in” without re-entering credentials until the **refresh token** expires or is revoked (e.g. logout). Session length can be much longer (e.g. 7 days) without storing passwords or long-lived access tokens.
+
+**Why call it optional?**
+
+- **Simpler setup:** You can ship with access-token-only and no refresh endpoint, no **dbo.RefreshToken** table, and no cookie handling. Session ends when the access token expires; user logs in again.
+- **Security / ops:** Short-lived access tokens limit exposure if a token is stolen; refresh tokens can be revoked in the DB (logout, or revoke all tokens for a user). If you don’t need long-lived “remember me” behaviour, you may skip refresh.
+- **Entra:** With Entra, the frontend can use MSAL to **acquire tokens silently** (e.g. when the access token expires) as long as the user has an Entra session in the browser. So in some setups the “refresh” is done by MSAL talking to Entra, not by your backend’s **/auth/refresh**. Your backend’s refresh (and **dbo.RefreshToken**) is then optional — used when you want a **backend-issued** access token (e.g. JWT dev mode) or a single place to revoke “session” (revoke refresh token in DB).
+
+So: **session expiry** = access token `exp` (and, if used, refresh token **ExpiresAt** or **Revoked**). **Logout** = frontend clears token and calls backend to revoke refresh and clear cookie; at each level, only the refresh row in DB and the cookie are updated; Entra has nothing to do unless you use MSAL logout. **Refresh** = optional so you can keep sessions short and simple (access token only) or support longer sessions and revocability with a refresh token in the DB.
+
+---
+
+## 11. Summary: Entra vs DB and session
 
 | Item | Entra | DB |
 |------|--------|-----|
