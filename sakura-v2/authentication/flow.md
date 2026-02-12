@@ -1,6 +1,26 @@
-# Sakura — Auth flow reference: endpoints, tables, columns, first login, and per user type
+# Sakura — Auth flow reference
 
-This document gives a single place to see: **what is maintained on Entra vs DB**, **each endpoint**, **each table and key columns**, the **first-login flow**, and the **flow per user type** (Requester, Workspace admin, Approver, Platform Admin, Support).
+Single place for: **Entra vs DB**, **endpoints**, **tables and columns**, **first-login flow**, **per user type**, **token verification**, **session expiry and logout**, and **table relationships**.
+
+---
+
+## Contents
+
+| § | What it covers |
+|---|----------------|
+| 1 | What is maintained on Entra vs database |
+| 2 | **All auth-related tables and relationships** (with ER diagram) |
+| 3 | Tables and key columns (quick reference) |
+| 4 | Auth and main endpoints |
+| 5 | **How the backend verifies the token (same app)** + pseudo-code |
+| 6 | First login — full flow |
+| 7 | Per user type: endpoints, tables, what they get |
+| 8 | One diagram: first login and by role |
+| 9 | When does session expire? |
+| 10 | What happens on logout? |
+| 11 | Logout at each level |
+| 12 | Why is refresh optional? |
+| 13 | Summary: Entra vs DB and session |
 
 ---
 
@@ -38,7 +58,69 @@ flowchart TB
 
 ---
 
-## 2. Tables and key columns
+## 2. All auth-related tables and their relationships
+
+**Purpose:** One place to see every auth-related table and how they link. The backend uses **User** as the bridge from token (oid) to roles and workspace visibility.
+
+### 2.1 Entity-relationship overview
+
+```mermaid
+erDiagram
+  User ||--o{ RefreshToken : "UserId"
+  User ||--o{ SupportUsers : "UserId or EntraObjectId"
+  User ||--o{ PlatformAdmins : "UserId or EntraObjectId"
+  Workspaces ||--o{ PermissionRequests : "WorkspaceId"
+  Workspaces ||--o{ WorkspaceSecurityModels : "WorkspaceId"
+  WorkspaceSecurityModels ||--o{ RLS_Approvers : "SecurityModelId"
+  PermissionRequests ||--o{ PermissionHeaders : "PermissionRequestId"
+  User : Id PK
+  User : EntraObjectId UK
+  User : Email
+  RefreshToken : Id PK
+  RefreshToken : Token hash
+  RefreshToken : UserId FK
+  RefreshToken : ExpiresAt
+  RefreshToken : Revoked
+  SupportUsers : EntraObjectId or UserId
+  PlatformAdmins : EntraObjectId or UserId
+  Workspaces : Id PK
+  Workspaces : WorkspaceOwner CSV
+  Workspaces : WorkspaceTechOwner CSV
+  Workspaces : WorkspaceApprover CSV
+  PermissionRequests : CreatedBy email
+  PermissionRequests : WorkspaceId FK
+```
+
+**Note:** **User** is the central identity table (EntraObjectId = oid from token). **Workspaces** do not have a FK to User; matching is by **User.Email** in the CSV columns. **SupportUsers** and **PlatformAdmins** reference User by **UserId** or **EntraObjectId**.
+
+### 2.2 Table list and relationships (auth-related)
+
+| Table | Primary key | Links to / used with | Purpose |
+|-------|-------------|----------------------|---------|
+| **dbo.User** | Id | — (root identity) | One row per user. **EntraObjectId** = token oid; **Email** = current email. RefreshToken, SupportUsers, PlatformAdmins reference this (by UserId or EntraObjectId). |
+| **dbo.RefreshToken** | Id | **User** (UserId) | Stores refresh token hash; **ExpiresAt**, **Revoked**. Used only for /auth/refresh and logout. |
+| **dbo.SupportUsers** | (EntraObjectId or UserId) | **User** (logical) | If current user has a row here → return all workspaces. |
+| **dbo.PlatformAdmins** | (EntraObjectId or UserId) | **User** (logical) | If current user has a row here → allow create workspace, app settings, event logs. |
+| **dbo.Workspaces** | Id | — | **WorkspaceOwner**, **WorkspaceTechOwner**, **WorkspaceApprover** (CSV emails). Filter by **User.Email**. PermissionRequests, WorkspaceSecurityModels reference WorkspaceId. |
+| **dbo.UserRoles** | Id | Optional: PlatformAdmins can use RoleName | Role definitions; can be used with a UserRoleAssignment table for Platform Admin. |
+| **dbo.PermissionRequests** | Id | **Workspaces** (WorkspaceId); **CreatedBy** (email) | Requests; **CreatedBy** = User.Email for "my requests". |
+| **dbo.PermissionHeaders** | Id | **PermissionRequests** (PermissionRequestId) | Request headers. |
+| **dbo.WorkspaceSecurityModels** | Id | **Workspaces** (WorkspaceId) | Security models per workspace. |
+| **dbo.RLS*Approvers** (e.g. RLSAMERApprovers) | — | **WorkspaceSecurityModels**; approver email/UserId | Who can approve RLS per model/type. Match by **User.Email** or UserId. |
+| **dbo.WorkspaceReports**, **WorkspaceApps**, **AppAudiences** | Id | **Workspaces** (WorkspaceId) | Workspace-scoped data; access checked via Workspaces (Owner/TechOwner/Approver) + User.Email. |
+
+**Relationship summary:**
+
+- **Token (oid)** → **User** (by EntraObjectId) → **UserId**, **Email**.
+- **RefreshToken** → **User** (UserId); expiry in **RefreshToken.ExpiresAt**.
+- **SupportUsers**, **PlatformAdmins** → **User** (UserId or EntraObjectId).
+- **Workspaces** ↔ **User**: no FK; match **User.Email** to WorkspaceOwner / WorkspaceTechOwner / WorkspaceApprover (CSV).
+- **PermissionRequests** → **Workspaces** (WorkspaceId); **CreatedBy** = email (same as User.Email).
+- **RLS/OLS approver tables** → workspace/security model; approver column = User.Email or UserId.
+
+---
+
+## 3. Tables and key columns (quick reference)
 
 | Table | Key columns used in auth/flow | Purpose |
 |-------|-------------------------------|---------|
@@ -52,7 +134,7 @@ flowchart TB
 
 ---
 
-## 3. Auth and main endpoints
+## 4. Auth and main endpoints
 
 | Endpoint | Method | Purpose | Tables / columns used |
 |----------|--------|---------|------------------------|
@@ -67,7 +149,40 @@ flowchart TB
 
 ---
 
-## 4. First login — full flow (all user types)
+## 5. How the backend verifies the token (same app)
+
+The backend does **not** call Entra on every request. It validates the **access token** locally using the JWT and Entra's public keys.
+
+### 5.1 What the backend checks
+
+1. **Signature** — Verify with Entra's **JWKS** (public keys). If the signature is valid, the token was issued by Entra and has not been tampered with.
+2. **iss** — Issuer must be your Entra tenant (e.g. `https://login.microsoftonline.com/{tenant-id}/v2.0`).
+3. **aud** — Audience must match your app. **"Same app"** means: the token was issued for your backend (or for your SPA's client ID / API scope). The backend config holds the expected **aud**; if it matches, frontend and backend are talking about the same app.
+4. **exp** — Current time &lt; **exp**. Expiry is read **from the token**; the backend does not look up expiry anywhere else (including not in **RefreshToken**).
+
+### 5.2 Access-token validation does not use the RefreshToken table
+
+- **Access token** is validated only via JWT: signature + **iss** + **aud** + **exp**. No database lookup.
+- **dbo.RefreshToken** is used only for the **/auth/refresh** flow (and logout revoke). It is **not** used to validate the access token on normal API requests.
+
+### 5.3 Example (pseudo-code)
+
+```csharp
+// On each request with Authorization: Bearer <access_token>
+// 1. Get Entra JWKS (cached), verify JWT signature
+// 2. Check claims:
+//    - iss == "https://login.microsoftonline.com/{tenant}/v2.0"
+//    - aud == configured ClientId or API scope (same app)
+//    - exp > DateTime.UtcNow
+// 3. Extract oid (and email) from token -> resolve to User in DB for roles/workspaces
+// No call to Entra; no lookup in RefreshToken for validation.
+```
+
+---
+
+## 6. First login — full flow (all user types)
+
+Sequence below: from user opening the app through first workspace list. Same flow for all user types; role differences apply when loading workspaces and approval data.
 
 ```mermaid
 sequenceDiagram
@@ -125,9 +240,9 @@ sequenceDiagram
 
 ---
 
-## 5. Per user type: endpoints, tables, columns, what they get
+## 7. Per user type: endpoints, tables, columns, what they get
 
-### 5.1 Requester
+### 7.1 Requester
 
 | Step | Endpoint | Tables / columns | What they get |
 |------|----------|------------------|----------------|
@@ -140,7 +255,7 @@ sequenceDiagram
 
 ---
 
-### 5.2 Workspace admin / Owner
+### 7.2 Workspace admin / Owner
 
 | Step | Endpoint | Tables / columns | What they get |
 |------|----------|------------------|----------------|
@@ -152,7 +267,7 @@ sequenceDiagram
 
 ---
 
-### 5.3 Approver (and Requester)
+### 7.3 Approver (and Requester)
 
 | Step | Endpoint | Tables / columns | What they get |
 |------|----------|------------------|----------------|
@@ -165,7 +280,7 @@ sequenceDiagram
 
 ---
 
-### 5.4 Platform Admin
+### 7.4 Platform Admin
 
 | Step | Endpoint | Tables / columns | What they get |
 |------|----------|------------------|----------------|
@@ -178,7 +293,7 @@ sequenceDiagram
 
 ---
 
-### 5.5 Support
+### 7.5 Support
 
 | Step | Endpoint | Tables / columns | What they get |
 |------|----------|------------------|----------------|
@@ -190,7 +305,7 @@ sequenceDiagram
 
 ---
 
-## 6. One diagram: first login and then by role
+## 8. One diagram: first login and then by role
 
 ```mermaid
 flowchart TB
@@ -236,7 +351,9 @@ flowchart TB
 
 ---
 
-## 7. When does session expire?
+## 9. When does session expire?
+
+Access token and refresh token have separate expiry; only the refresh flow uses the DB.
 
 | What | Where expiry is maintained | When it expires |
 |------|----------------------------|------------------|
@@ -246,7 +363,7 @@ flowchart TB
 
 ---
 
-## 8. What happens on logout?
+## 10. What happens on logout?
 
 | Step | What happens |
 |------|------------------|
@@ -260,7 +377,7 @@ After logout, any request without a Bearer token (or with an old one) gets **401
 
 ---
 
-## 9. Logout at each level (who does what)
+## 11. Logout at each level (who does what)
 
 | Level | How logout is handled |
 |-------|------------------------|
@@ -271,7 +388,7 @@ After logout, any request without a Bearer token (or with an old one) gets **401
 
 ---
 
-## 10. Why is refresh optional? (explanation)
+## 12. Why is refresh optional? (explanation)
 
 Refresh is **optional** because the app can work with **only an access token**:
 
@@ -288,7 +405,7 @@ So: **session expiry** = access token `exp` (and, if used, refresh token **Expir
 
 ---
 
-## 11. Summary: Entra vs DB and session
+## 13. Summary: Entra vs DB and session
 
 | Item | Entra | DB |
 |------|--------|-----|
