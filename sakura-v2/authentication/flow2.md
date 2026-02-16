@@ -124,8 +124,8 @@ sequenceDiagram
     Entra-->>MSAL: ID token + Access token
     MSAL-->>Browser: Tokens cached (localStorage)
 
-    Browser->>Browser: Layout loads; wait for MSAL idle or 2s
-    Browser->>MSAL: acquireTokenSilent(scopes, account)
+    Browser->>Browser: Layout loads, wait for MSAL idle or timeout
+    Browser->>MSAL: acquireTokenSilent
     MSAL-->>Browser: accessToken
     Browser->>API: GET /api/Auth/me with Bearer token
     API->>API: Validate token, HttpContext.User claims
@@ -255,6 +255,52 @@ So: **same token, same middleware, same User**; only the endpoint and parameters
 | **GET /workspaces/{id}/WorkspaceApp** | `apiService.get('/workspaces/:workspaceId/apps', { workspaceId })` | `WorkspaceAppController.ListWorkspaceApps(workspaceId)` | No `forUser` in URL; backend returns apps for that **workspaceId**. Access control is effectively “user must already have access to the workspace” (e.g. they got workspaceId from GET /workspaces filtered by their email). |
 | **POST .../AppAudience** (create) | `apiService.post('/workspaces/:workspaceId/apps/:appId/audiences', body)` | `AppAudienceController.AddAppAudienceAsync(workspaceId, appId, request)` | Backend ensures workspace and app exist and are linked; creates the audience. Again, “current user” is implied by the **Bearer token**; the backend could later add checks (e.g. only workspace owners can create) using **User** (oid/email). |
 
+### Each API in simple table form (frontend, backend API, controller, service, DB)
+
+Each row is one layer. With Entra, every request includes the **Bearer token** (MsalInterceptor); the backend validates it and sets **User** (oid, email, name).
+
+**1. GET /api/Auth/me — "Who am I?"**
+
+| Layer | What happens |
+|-------|--------------|
+| **Frontend** | Layout calls `authService.getCurrentUser()`. With Entra: `acquireTokenSilent()` then `http.get(url, { headers: { Authorization: 'Bearer ' + accessToken } })`. |
+| **Backend API** | `GET /api/Auth/me` with header `Authorization: Bearer token`. |
+| **Controller** | `AuthController.GetMe()`. Has `[Authorize]`. Reads `User` (claims) only; no DB. |
+| **Service** | None. Controller returns userId, email, name, role from claims. |
+| **Database** | Not used. |
+
+**2. GET /api/workspaces — List workspaces for a user**
+
+| Layer | What happens |
+|-------|--------------|
+| **Frontend** | Component calls `workspaceService.getWorkspaces()` or `getAllWorkspaces()`. Service calls `apiService.get('/workspaces', { forUser, includeDeleted })`. MsalInterceptor adds Bearer token. For Entra, forUser should be current user email. |
+| **Backend API** | `GET /api/workspaces?forUser=...&includeDeleted=...`. |
+| **Controller** | `WorkspaceController.GetWorkspaces(forUser, includeDeleted)`. Uses query params; special case for support mailbox; else calls service with forUser. |
+| **Service** | `WorkspaceService.GetWorkspacesForUserAsync(forUser, includeDeleted)`. Filters where forUser is in Owner/TechOwner/Approver CSV. |
+| **Database** | Reads **Workspaces** table; filter by email in owner/tech owner/approver columns. |
+
+**3. GET /api/workspaces/{workspaceId}/WorkspaceApp — List apps in a workspace**
+
+| Layer | What happens |
+|-------|--------------|
+| **Frontend** | Component has workspaceId. Calls `apiService.get('/workspaces/:workspaceId/apps', { workspaceId })` or domain method. MsalInterceptor adds Bearer token. |
+| **Backend API** | `GET /api/workspaces/{workspaceId}/WorkspaceApp` (optional `?includeDeleted=true`). |
+| **Controller** | `WorkspaceAppController.ListWorkspaceApps(workspaceId, includeDeleted)`. |
+| **Service** | `WorkspaceAppService.GetWorkspaceAppsAsync(workspaceId)` or `GetAnyWorkspaceAppsAsync(workspaceId)`. |
+| **Database** | Reads **WorkspaceApps** by **WorkspaceId**. |
+
+**4. POST /api/workspaces/{workspaceId}/AppAudience/{appId}/ — Create app audience**
+
+| Layer | What happens |
+|-------|--------------|
+| **Frontend** | Component has workspaceId and appId; user fills form. Calls `apiService.post('.../audiences', body)`. MsalInterceptor adds Bearer token. |
+| **Backend API** | `POST /api/workspaces/{workspaceId}/AppAudience/{appId}/` with body. |
+| **Controller** | `AppAudienceController.AddAppAudienceAsync(workspaceId, appId, request)`. |
+| **Service** | `AppAudienceService.AddAppAudienceAsync(...)`. Verifies workspace and app; creates AppAudience. |
+| **Database** | Insert into **AppAudiences**. |
+
+**Summary:** Frontend (component → domain service → ApiService) → MsalInterceptor adds Bearer token → Backend (middleware sets User) → Controller → Service → Database. GET /workspaces needs the user's email as **forUser**.
+
 ### Mermaid: one request (e.g. GET workspaces or GET workspace apps)
 
 ```mermaid
@@ -266,17 +312,17 @@ sequenceDiagram
     participant API as Sakura API
     participant DB as Database
 
-    Component->>Service: getWorkspaces() or getApps(workspaceId)
-    Service->>Api: get('/workspaces', { forUser, includeDeleted })<br/>or get('/workspaces/:id/apps')
-    Api->>Api: Build URL + params (no Auth header)
+    Component->>Service: getWorkspaces or getApps
+    Service->>Api: get workspaces or get workspace apps
+    Api->>Api: Build URL and params
     Api->>MSAL: HttpClient.get(url)
 
     Note over MSAL: URL matches protectedResourceMap
-    MSAL->>MSAL: acquireTokenSilent() or use cache
-    MSAL->>API: GET url + Authorization: Bearer &lt;token&gt;
+    MSAL->>MSAL: acquireTokenSilent or use cache
+    MSAL->>API: GET url with Authorization Bearer token
 
-    API->>API: Validate token → User (oid, email, name)
-    API->>API: Controller: GetWorkspaces(forUser) or ListWorkspaceApps(workspaceId)
+    API->>API: Validate token, set User claims
+    API->>API: Controller runs GetWorkspaces or ListWorkspaceApps
     API->>DB: Service: filter by forUser or by workspaceId
     DB-->>API: Rows
     API-->>MSAL: JSON response
