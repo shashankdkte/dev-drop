@@ -1,49 +1,47 @@
 # Administrator Guide
 
-This guide is for **Administrators**: users who create workspaces, change application settings, view event logs, and configure In-App Help. Administrators can do everything other roles can do, plus the tasks below.
+This guide is for **Administrators**: users who create workspaces, manage List of Values (LoV), and change application settings. Every step uses the **exact names and paths** you see in the Sakura app. Administrators can do everything other roles can do, plus the tasks below.
 
 ---
 
 ## In this guide
 
-| Section | What you'll do |
-|--------|-----------------|
-| [Access Admin areas](#access-admin-areas) | Open Workspaces, LoV, Application Settings |
-| [Create a workspace](#create-a-workspace) | Add a new workspace with owner and approver |
-| [Edit, activate, or deactivate a workspace](#edit-activate-or-deactivate-a-workspace) | Change workspace state and details |
-| [Change application settings](#change-application-settings) | Update global app settings |
-| [View event logs](#view-event-logs) | Open and filter event logs |
-| [Configure In-App Help](#configure-in-app-help) | Set help content shown in the app |
+| Section | In the app |
+|--------|------------|
+| [Access Management](#access-management) | **Management** (left sidebar) → **Workspaces**, **List of Values (LoV)**, **Application Settings** |
+| [Create a workspace](#create-a-workspace) | **Workspaces** tab → **Create workspace** |
+| [Edit, activate, or deactivate a workspace](#edit-activate-or-deactivate-a-workspace) | **Workspaces** tab → expand, **Edit**, **Deactivate**, **Activate** |
+| [Manage List of Values (LoV)](#manage-list-of-values-lov) | **List of Values (LoV)** tab |
+| [Change application settings](#change-application-settings) | **Application Settings** tab |
 
 ---
 
 ## What you can do as an Administrator
 
 - Everything that Requesters, Approvers, and Workspace Admins can do  
-- **Create workspaces**  
-- **Change application settings**  
-- **See emails** (as configured)  
-- **View event logs**  
-- **Configure In-App Help**  
+- **Create workspaces** and edit, activate, or deactivate them (**Management** → **Workspaces**)  
+- **Manage List of Values (LoV)** (**Management** → **List of Values (LoV)**)  
+- **Change application settings** (**Management** → **Application Settings**)  
+- **View event logs** and **configure In-App Help** when enabled by your organisation    
 
 ---
 
-## Access Admin areas
+## Access Management
 
 1. Sign in to Sakura (see [README](README.md#signing-in)).
-2. Open **Admin** or **Administration** (or **Workspace Management** for workspace list) from the main menu.
-3. You will see tabs or sections such as **Workspaces**, **List of Values**, and **Application Settings**.
+2. In the **left sidebar**, click **Management**. The page title is **System management**; the description is “Manage workspaces, List of Values (LoV), and system configurations”.
+3. You will see **three tabs**: **Workspaces**, **List of Values (LoV)**, and **Application Settings**.
 
-![Admin area – Workspaces, LoV, Application Settings tabs](https://placehold.co/600x400/EEE/31343C)
+![Management – Workspaces, List of Values (LoV), Application Settings tabs](https://placehold.co/600x400/EEE/31343C)
 
-**Why it matters:** The Admin area is the only place where you can create workspaces and change global settings.
+**Why it matters:** Management is the only place where you can create workspaces and change global settings.
 
 ---
 
 ## Create a workspace
 
-1. Go to **Admin** → **Workspaces** (or **Workspace Management** → **Workspaces** tab).
-2. Click **Create workspace** (or **Add workspace**).
+1. In **Management**, click the **Workspaces** tab.
+2. Click **Create workspace**.
 3. Fill in the form:
    - **Workspace code** (e.g. `AUS-OPS`)
    - **Workspace name** (e.g. Australia Operations)
@@ -57,7 +55,7 @@ This guide is for **Administrators**: users who create workspaces, change applic
 
 ![Create workspace form – all fields](https://placehold.co/600x400/EEE/31343C)
 
-5. The new workspace appears in the table. The owner can then open the **WSO Console** and configure apps, reports, and security models.
+5. The new workspace appears in the table. The owner can then open **WSO console** and configure apps, audiences, reports, and security models.
 
 ![Workspace created – success and table](https://placehold.co/600x400/EEE/31343C)
 
@@ -67,10 +65,11 @@ This guide is for **Administrators**: users who create workspaces, change applic
 
 ## Edit, activate, or deactivate a workspace
 
-1. In **Admin** → **Workspaces**, find the workspace in the table.
-2. **View details:** Click the expand arrow to see full properties and app count.
+1. In **Management** → **Workspaces** tab, find the workspace in the table.
+2. **View details:** Click the **expand arrow** on the left to see full properties and app count.
 3. **Edit:** Click the **Edit** (pencil) icon, change fields, and **Save**.
-4. **Deactivate:** Click **Deactivate** and confirm. The workspace becomes inactive (hidden from most views unless “Show all” is used).
+4. **Deactivate:** Click **Deactivate** and confirm. Use the **Active only** / **Show all** toggle to include or hide inactive workspaces.
+
 5. **Activate:** For an inactive workspace, click **Activate** to make it active again.
 
 ![Workspace list – expand, Edit, Deactivate, Activate](https://placehold.co/600x400/EEE/31343C)
@@ -79,39 +78,33 @@ This guide is for **Administrators**: users who create workspaces, change applic
 
 ---
 
+## Manage List of Values (LoV)
+
+1. In **Management**, click the **List of Values (LoV)** tab. The heading is **List of Values (LoV) Management**.
+2. Use search and filters (e.g. by type) to find the LoV entries you need. Add, edit, or delete entries as allowed. Save changes.
+3. LoV entries are used in dropdowns and configuration across Sakura. Application settings that start with `ApplicationSetting_` are stored as LoV.
+
+![List of Values (LoV) tab](https://placehold.co/600x400/EEE/31343C)
+
+**Why it matters:** LoV drives consistent options across the app; admins maintain the master list.
+
+---
+
 ## Change application settings
 
-1. Go to **Admin** → **Application Settings** (or **List of Values** if settings are managed via LoV).
-2. Find the setting you want to change (e.g. feature flags, URLs, or other configuration keys).
-3. Edit the value and **Save**.
+1. In **Management**, click the **Application Settings** tab. The description explains that settings are stored as LoV with types starting with `ApplicationSetting_`.
+2. Find the setting you want to change (e.g. feature flags, URLs, or other keys). Edit the value and **Save**.
 
-![Application Settings – list and edit](https://placehold.co/600x400/EEE/31343C)
+![Application Settings tab – list and edit](https://placehold.co/600x400/EEE/31343C)
 
 **Why it matters:** Application settings control global behaviour (e.g. auth, integrations). Only admins should change them.
 
 ---
 
-## View event logs
+## Event logs and In-App Help
 
-1. Go to **Admin** → **Event logs** (or **Event Logs**).
-2. Use filters if available (date range, user, workspace, event type).
-3. Review the list of events. Click a row to see more detail if the UI supports it.
-
-![Event logs list with filters](https://placehold.co/600x400/EEE/31343C)
-
-**Why it matters:** Event logs help with auditing and troubleshooting (e.g. who did what and when).
-
----
-
-## Configure In-App Help
-
-1. Go to **Admin** → **In-App Help** (or **Help configuration**).
-2. Add or edit **help content** (e.g. text, links, or sections) that users see inside the application.
-3. Save. The updated help appears in the app according to your configuration.
-
-![In-App Help configuration screen](https://placehold.co/600x400/EEE/31343C)
-
-**Why it matters:** In-App Help gives users guidance without leaving Sakura; you control what they see.
+- **Event logs:** If your organisation has enabled event logging, it may appear as a separate area or under Management. Use it to review who did what and when.
+- **In-App Help:** If In-App Help configuration is enabled, use it to set the help content users see inside Sakura. The exact location depends on your deployment.
 
 ---
 
