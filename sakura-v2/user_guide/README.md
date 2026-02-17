@@ -5,6 +5,7 @@ Welcome to **Sakura** — the access request and workspace management applicatio
 ---
 
 ## What is Sakura?
+![Image](screenshots/01_dashboard.png)
 
 Sakura lets you **request and manage access** to reports and apps within workspaces. Depending on your role, you can:
 
@@ -29,7 +30,7 @@ Choose your role to jump to the right section. Each guide uses the **exact same 
 | **Administrator** | [Administrator guide →](Administrator.md) | **Management** → Workspaces, List of Values (LoV), Application Settings |
 
 **Left sidebar in Sakura:** Dashboard · My requests · My access · Report catalogue · My approvals · Delegation · Management · WSO console (and Data entry if enabled). You only see items you have access to.
-![Image](screenshots/01_dashboard.png)
+
 ---
 
 ## Signing in
@@ -40,7 +41,6 @@ Before following any role-specific steps, sign in with your work account.
 2. When prompted, sign in with your **work (Microsoft) account** (e.g. `your.name@dentsu.com`).
 3. After sign-in, you are taken to the Sakura home or dashboard.
 
-![Sign-in page – Microsoft work account prompt](https://placehold.co/600x400/EEE/31343C)
 ![Image](screenshots/00_sign_in.png)
 
 **Why it matters:** Sakura uses your organisation’s identity (e.g. Microsoft Entra). You only see workspaces and actions that your account is allowed to use.
@@ -66,4 +66,5 @@ Before following any role-specific steps, sign in with your work account.
 ---
 
 *Start with your role above and follow the linked guide. Every section has numbered steps and an image so you always know what to do. All links in this table stay inside the User Guide.*
+
 
