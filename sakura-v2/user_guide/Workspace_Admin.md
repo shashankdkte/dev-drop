@@ -64,13 +64,6 @@ Workspaces are created and assigned by **Sakura Administrators**. You only see w
 
 > **Note:** You cannot delete a workspace; only an Administrator can create workspaces. You can deactivate one from the Admin area if your organisation allows it.
 
----
-
-## Change workspace properties
-
-Depending on your organisation’s setup, workspace properties (e.g. owner, approver, domain) may be editable from the workspace list or admin area. Use **Edit workspace** (or the equivalent) when available to update owners and approvers. Only an Administrator can create or delete workspaces.
-
-![Workspace edit form – owner, approver, domain](screenshots/wso-workspace-edit-form.png)
 
 ---
 
@@ -307,6 +300,7 @@ The **apps table** lists each app with: **App code**, **App name**, **App owner*
 - **Administrators** create workspaces and manage app-wide settings: see [Administrator guide](Administrator.md).
 
 *Everything you need is in this User Guide; the list in "What you can do as a Workspace Admin" is the full set of workspace capabilities.*
+
 
 
 
