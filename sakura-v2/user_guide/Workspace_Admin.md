@@ -80,7 +80,7 @@ In the WSO Console, select your workspace and open the **Apps** tab. You see:
 
 The **apps table** lists each app with: **App code**, **App name**, **App owner**, **Technical owner**, **Approval mode**, **OLS mode**, **Audiences** (count), **Status** (e.g. Active), **Last modified** (date and user), and **Actions** (⋮ menu for Edit, Deactivate, etc.). Use this list to find an app before editing, activating, or deactivating it.
 
-![Apps list – search, Active only toggle, table with actions](screenshots/wso_apps_list.png)
+![Image](screenshots/04_list_apps.png)
 
 ### Add App
 
@@ -269,6 +269,7 @@ The **apps table** lists each app with: **App code**, **App name**, **App owner*
 - **Administrators** create workspaces and manage app-wide settings: see [Administrator guide](Administrator.md).
 
 *Everything you need is in this User Guide; the list in "What you can do as a Workspace Admin" is the full set of workspace capabilities.*
+
 
 
 
