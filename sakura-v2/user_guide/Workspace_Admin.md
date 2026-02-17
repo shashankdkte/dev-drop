@@ -10,7 +10,7 @@ This guide is for **Workspace Admins** (WSO): users who manage a workspace’s a
 |--------|-----------------|
 | [Open WSO and select workspace](#open-the-wso-console-and-select-your-workspace) | Enter the console and pick your workspace |
 | [Change workspace properties](#change-workspace-properties) | Edit owner, approver, domain, etc. |
-| [Manage Apps](#manage-apps-in-the-workspace) | Add, edit, deactivate apps |
+| [Manage Apps](#manage-apps-in-the-workspace) | List, add, edit, activate, deactivate apps |
 | [Manage Audiences](#manage-audiences-for-audience-based-apps) | Add audiences for audience-based apps |
 | [Associate reports with audience (AUR)](#associate-reports-with-an-audience-aur-only) | Link AUR reports to audiences |
 | [Manage Reports](#manage-reports-in-the-workspace) | Add/edit reports, set AUR vs SAR and approvers |
@@ -67,6 +67,20 @@ Workspaces are created and assigned by **Sakura Administrators**. You only see w
 ---
 
 ## Manage Apps in the workspace
+
+### List apps
+
+In the WSO Console, select your workspace and open the **Apps** tab. You see:
+
+- **Tabs** for Apps, Audiences, Reports, and Mappings (with counts) so you can switch between them.
+- **Search** — search apps by name, code, or owner.
+- **Active only** — a toggle to show only active apps (on) or to include inactive apps (off).
+- **Refresh** — reload the list.
+- **Add new app** — open the form to add an app (see [Add App](#add-app)).
+
+The **apps table** lists each app with: **App code**, **App name**, **App owner**, **Technical owner**, **Approval mode**, **OLS mode**, **Audiences** (count), **Status** (e.g. Active), **Last modified** (date and user), and **Actions** (⋮ menu for Edit, Deactivate, etc.). Use this list to find an app before editing, activating, or deactivating it.
+
+![Apps list – search, Active only toggle, table with actions](screenshots/wso_apps_list.png)
 
 ### Add App
 
