@@ -53,11 +53,9 @@ This guide is for **Workspace Admins** (WSO): users who manage a workspace’s a
 
 ---
 
-## Change workspace properties
+## Select workspace (Predefined by Sakura Administrators)
 
-1. In the WSO Console, with your workspace selected, go to **Workspace settings** or **Properties** (or click **Edit** on the workspace header).
-2. Update fields as needed: **name**, **code**, **owner**, **technical owner**, **approver**, **domain**, **tag**, **Entra Group UID**.
-3. Click **Save**.
+// Add lines here explaining
 
 ![Image](screenshots/03_wso_workpace_selected.png)
 
@@ -236,4 +234,5 @@ This guide is for **Workspace Admins** (WSO): users who manage a workspace’s a
 - **Administrators** create workspaces and manage app-wide settings: see [Administrator guide](Administrator.md).
 
 *Everything you need is in this User Guide; the list in "What you can do as a Workspace Admin" is the full set of workspace capabilities.*
+
 
