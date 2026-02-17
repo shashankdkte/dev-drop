@@ -87,9 +87,34 @@ The **apps table** lists each app with: **App code**, **App name**, **App owner*
 ![Image](screenshots/05_add_app_btn.png)
 
 1. In the WSO Console, select your workspace and open the **Apps** tab or section.
-2. Click **Add app**.
-3. Enter **App code** and **App name**; set **Approval mode** (e.g. **Audience-based** or **Other**).
+2. Click **Add app**. 
+
+![Image](screenshots/06_add_new_app_form.png)
+
+3. Enter **App code** and **App name**; set **Approval mode** (e.g. **Audience-based** or **App Based**) set **Security mode** (e.g. **Managed** or **Unmanaged**) 
+
+![Image](screenshots/07_filled_app_form.png)
+
+
+
+// managed pleae add info
+
+![Image](screenshots/08_managed_entra_id.png)
+
+
+
+//optional adding question
+![Image](screenshots/09_additional_questions.png)
+
 4. Save. The app appears in the workspace app list.
+//optional adding question
+![Image](screenshots/10_success_message_app.png)
+   
+
+checkout not newly added app
+
+![Image](screenshots/11_newly_added_app.png)
+
 
 ![Add app form – code, name, approval mode](https://placehold.co/600x400/EEE/31343C)
 
@@ -101,6 +126,7 @@ The **apps table** lists each app with: **App code**, **App name**, **App owner*
 2. Change **App code**, **App name**, **Approval mode**, or other fields as needed. Click **Save**.
 
 ![Apps list with Edit action](https://placehold.co/600x400/EEE/31343C)
+06_add_new_app_form
 
 **Why it matters:** Keeping app details correct ensures the right approval flow and naming for requesters and approvers.
 
@@ -271,6 +297,7 @@ The **apps table** lists each app with: **App code**, **App name**, **App owner*
 - **Administrators** create workspaces and manage app-wide settings: see [Administrator guide](Administrator.md).
 
 *Everything you need is in this User Guide; the list in "What you can do as a Workspace Admin" is the full set of workspace capabilities.*
+
 
 
 
