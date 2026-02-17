@@ -84,6 +84,8 @@ The **apps table** lists each app with: **App code**, **App name**, **App owner*
 
 ### Add App
 
+![Image](screenshots/05_add_app_btn.png)
+
 1. In the WSO Console, select your workspace and open the **Apps** tab or section.
 2. Click **Add app**.
 3. Enter **App code** and **App name**; set **Approval mode** (e.g. **Audience-based** or **Other**).
@@ -269,6 +271,7 @@ The **apps table** lists each app with: **App code**, **App name**, **App owner*
 - **Administrators** create workspaces and manage app-wide settings: see [Administrator guide](Administrator.md).
 
 *Everything you need is in this User Guide; the list in "What you can do as a Workspace Admin" is the full set of workspace capabilities.*
+
 
 
 
