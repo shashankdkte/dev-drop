@@ -19,14 +19,16 @@ Everything is tied to **workspaces**: each workspace has its own apps, reports, 
 
 ## Who are you?
 
-Choose your role to jump to the right section. Each guide is step-by-step with screenshots.
+Choose your role to jump to the right section. Each guide uses the **exact same menu names and paths** you see in the Sakura app, so you can follow along without guessing.
 
-| Role | Guide | What you'll do |
-|------|--------|----------------|
-| **Requester** | [Requester guide →](Requester.md) | Request access, view your requests, use the Report Catalogue, see your existing access |
-| **Approver** | [Approver guide →](Approver.md) | View pending and past approvals, approve or reject requests, manage delegates, open Sakura from approval emails |
-| **Workspace Admin** | [Workspace Admin guide →](Workspace_Admin.md) | Manage your workspace: apps, audiences, reports, security models, mappings, RLS approvers, view or revoke requests |
-| **Administrator** | [Administrator guide →](Administrator.md) | Create workspaces, change application settings, view event logs, configure In-App Help |
+| Role | Guide | In the app you'll use |
+|------|--------|------------------------|
+| **Requester** | [Requester guide →](Requester.md) | **Dashboard**, **My requests**, **Report catalogue**, **My access** (left sidebar) |
+| **Approver** | [Approver guide →](Approver.md) | **My approvals**, **Delegation** (left sidebar) |
+| **Workspace Admin** | [Workspace Admin guide →](Workspace_Admin.md) | **WSO console** → Object management, Security models, Approver assignments, etc. |
+| **Administrator** | [Administrator guide →](Administrator.md) | **Management** → Workspaces, List of Values (LoV), Application Settings |
+
+**Left sidebar in Sakura:** Dashboard · My requests · My access · Report catalogue · My approvals · Delegation · Management · WSO console (and Data entry if enabled). You only see items you have access to.
 
 ---
 
