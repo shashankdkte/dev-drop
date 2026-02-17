@@ -55,7 +55,7 @@ This guide is for **Workspace Admins** (WSO): users who manage a workspace’s a
 
 ## Select workspace (Predefined by Sakura Administrators)
 
-// Add lines here explaining
+Workspaces are created and assigned by **Sakura Administrators**. You only see workspaces where you are listed as an owner. After opening the WSO Console, select the workspace you want to manage from the list. The selected workspace determines which apps, reports, audiences, and security models you can configure.
 
 ![Image](screenshots/03_wso_workpace_selected.png)
 
@@ -68,10 +68,10 @@ This guide is for **Workspace Admins** (WSO): users who manage a workspace’s a
 
 ## Manage Apps in the workspace
 
-### Add or activate an app
+### Add App
 
 1. In the WSO Console, select your workspace and open the **Apps** tab or section.
-2. Click **Add app** (or **Activate app** if adding from a list of available apps).
+2. Click **Add app**.
 3. Enter **App code** and **App name**; set **Approval mode** (e.g. **Audience-based** or **Other**).
 4. Save. The app appears in the workspace app list.
 
@@ -79,12 +79,33 @@ This guide is for **Workspace Admins** (WSO): users who manage a workspace’s a
 
 **Why it matters:** Apps are the containers for audiences and reports. Approval mode determines whether access is granted via audiences (AUR) or via per-request approval (SAR).
 
-### Edit or deactivate an app
+### Edit app
 
-1. In **Apps**, find the app and click **Edit** (pencil) or **Deactivate**.
-2. For edit: change fields and **Save**. For deactivate: confirm so the app is no longer active in the workspace.
+1. In **Apps**, find the app and click **Edit** (pencil).
+2. Change **App code**, **App name**, **Approval mode**, or other fields as needed. Click **Save**.
 
-![Apps list with Edit / Deactivate actions](https://placehold.co/600x400/EEE/31343C)
+![Apps list with Edit action](https://placehold.co/600x400/EEE/31343C)
+
+**Why it matters:** Keeping app details correct ensures the right approval flow and naming for requesters and approvers.
+
+### Activate app
+
+1. In the WSO Console, open the **Apps** tab or section for your workspace.
+2. If your organisation provides a list of available (inactive) apps, click **Activate app** (or the equivalent).
+3. Choose the app to activate and confirm. The app becomes active in the workspace and can be used by requesters.
+
+![Activate app from available apps list](https://placehold.co/600x400/EEE/31343C)
+
+**Why it matters:** Activating an app from the predefined list adds it to your workspace without creating it from scratch.
+
+### Deactivate app
+
+1. In **Apps**, find the app and click **Deactivate**.
+2. Confirm. The app is no longer active in the workspace; it will not appear for new requests but may still apply to existing access depending on your organisation’s rules.
+
+![Apps list with Deactivate action](https://placehold.co/600x400/EEE/31343C)
+
+**Why it matters:** Deactivating removes the app from use for new access requests while keeping historical data.
 
 ---
 
@@ -234,5 +255,6 @@ This guide is for **Workspace Admins** (WSO): users who manage a workspace’s a
 - **Administrators** create workspaces and manage app-wide settings: see [Administrator guide](Administrator.md).
 
 *Everything you need is in this User Guide; the list in "What you can do as a Workspace Admin" is the full set of workspace capabilities.*
+
 
 
