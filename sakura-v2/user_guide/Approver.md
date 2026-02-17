@@ -1,6 +1,6 @@
 # Approver Guide
 
-This guide is for **Approvers**: users who view pending and past approvals, approve or reject access requests, manage delegates, and open Sakura from approval emails.
+This guide is for **Approvers**: users who review and approve access requests, manage delegates, and open Sakura from approval emails. Every step uses the **exact names and paths** you see in the Sakura app (left sidebar: **My approvals**, **Delegation**).
 
 ---
 
@@ -8,116 +8,70 @@ This guide is for **Approvers**: users who view pending and past approvals, appr
 
 | Section | What you'll do |
 |--------|-----------------|
-| [View approvals awaiting your action](#view-approvals-awaiting-your-action) | Open your pending approvals list |
-| [View approvals you have already given](#view-approvals-you-have-already-given) | See previous approvals |
-| [Approve or reject a request](#approve-or-reject-a-request) | Single or bulk approve/reject with reason |
-| [View request details and chain status](#view-request-details-and-chain-status) | See history and approval chain |
-| [View requester's existing rights](#view-requesters-existing-rights) | Check their current access |
-| [Open Sakura from an approval email](#open-sakura-from-an-approval-email) | Use the email link to approve |
-| [Set up delegates](#set-up-delegates) | Allow someone else to approve on your behalf |
+| [View approvals awaiting your action](#view-approvals-awaiting-your-action) | Open **My approvals** and see pending requests |
+| [Approve or reject a request](#approve-or-reject-a-request) | Use **Approve** or **Reject** on an audience/app request |
+| [Set up delegates](#set-up-delegates) | Open **Delegation** and assign delegates |
+| [Open Sakura from an approval email](#open-sakura-from-an-approval-email) | Use the link in the email to land in Sakura |
 
 ---
 
 ## What you can do as an Approver
 
-- Everything a Requester can do (view and create requests, Report Catalogue, etc.)  
-- View the list of **approvals awaiting your action**, per workspace and per type (OLS, RLS, LM)  
-- View the list of **approvals you have already given**, per workspace and per type  
-- **Approve or reject** one or more requests at once, with an optional reason  
-- View **request details**, **history**, and **current approval state** (chain status)  
-- View the **existing rights** of the user who created the request (within the selected workspace)  
-- **Open Sakura from an approval email** and land on the right approval screen  
-- **Set up delegates** (forward-looking, time-limited) so someone else can approve on your behalf  
+- Everything a Requester can do (Dashboard, **My requests**, **Report catalogue**, **My access**)  
+- View **approvals awaiting your action** and **approvals you have already given** (**My approvals**)  
+- **Approve or reject** access requests (e.g. per audience or app)  
+- **Set up delegates** so someone else can approve on your behalf (**Delegation** in the sidebar)  
+- **Open Sakura from an approval email** via the link in the message  
 
 ---
 
 ## View approvals awaiting your action
 
 1. Sign in to Sakura (see [README](README.md#signing-in)).
-2. Open **Approvals** or **Pending approvals** from the main menu.
-3. Optionally filter by **workspace** and **type** (OLS, RLS, LM).
-4. You will see a list of requests waiting for your approval.
+2. In the **left sidebar**, click **My approvals**. The page title is **My approvals**; the description is “Review and approve pending access requests”.
+3. The screen shows **Apps & Audiences**: requests grouped by app, then by audience. Each card shows **Workspace**, status (**Approved** or pending), and **Approve** / **Reject** buttons for pending items.
+4. If there are no pending approvals, you will see “No pending approvals” and “You don’t have any pending approval requests at the moment”.
 
-![Pending approvals list – filter by workspace and type](https://placehold.co/600x400/EEE/31343C)
+![My approvals – Apps & Audiences cards](https://placehold.co/600x400/EEE/31343C)
 
 **Why it matters:** This is your approval inbox. Acting on these requests keeps access decisions timely.
 
 ---
 
-## View approvals you have already given
-
-1. Go to **Approvals** (or **My approvals**) and switch to **Previous** or **History** (or the equivalent tab).
-2. Filter by **workspace** and **type** if needed.
-3. You will see requests you have already approved or rejected.
-
-![Previous approvals list](https://placehold.co/600x400/EEE/31343C)
-
-**Why it matters:** You can review past decisions and follow up if needed.
-
----
-
 ## Approve or reject a request
 
-1. From **Pending approvals**, click the request (or open it from an email link — see [Open Sakura from an approval email](#open-sakura-from-an-approval-email)).
-2. Review the **request details**, **history**, and **chain status**.
-3. Optionally view the **requester’s existing rights** in the workspace (if the UI offers it).
-4. Click **Approve** or **Reject**.
-5. If required, enter a **reason** (e.g. for rejection) and confirm.
+1. In **My approvals** (left sidebar), find the **audience** or **app** card for the request you want to act on.
+2. Review the **Workspace**, **audience name**, and **description**.
+3. For a **pending** request, click **Approve** or **Reject**.
+4. If the app asks for a **reason** (e.g. for rejection), enter it and confirm.
 
-![Approve/Reject with reason](https://placehold.co/600x400/EEE/31343C)
+![Approve / Reject on an audience card](https://placehold.co/600x400/EEE/31343C)
 
-6. You can also **approve or reject multiple requests at once** if the UI supports bulk actions — select the requests and use the bulk Approve/Reject button.
-
-![Bulk approve/reject](https://placehold.co/600x400/EEE/31343C)
-
-**Why it matters:** Your decision completes (or advances) the approval chain so the requester can get access or be informed of rejection.
+**Why it matters:** Your decision completes (or advances) the approval chain so the requester gets access or is informed of rejection.
 
 ---
 
-## View request details and chain status
+## Set up delegates
 
-1. In **Pending** or **Previous** approvals, click a request.
-2. You will see **request details**, **history** (who did what and when), and **current approval state** (chain status).
+1. In the **left sidebar**, click **Delegation**. The page title is **Delegation settings**; the description is “Assign delegates to handle your approvals when you're unavailable”.
+2. In **Assign delegates**, enter the **Delegate email** (e.g. colleague@company.com) and choose **Delegate role** (which types of approvals they can handle).
+3. Set **Start date** and **End date** so the delegation is time-limited.
+4. Click the button to **add** the delegate. They will receive new approval requests on your behalf; existing requests stay with you.
 
-![Request detail – history and chain status](https://placehold.co/600x400/EEE/31343C)
+![Delegation settings – Assign delegates form](https://placehold.co/600x400/EEE/31343C)
 
-**Why it matters:** Understanding the full chain helps you make an informed approve/reject decision.
-
----
-
-## View requester’s existing rights
-
-1. Open a request that is awaiting your approval.
-2. Find the section or link that shows **Existing rights** (or **User’s current access**) for the requester in the selected workspace.
-3. Review their current OLS/RLS access so you can decide in context.
-
-![Requester existing rights in workspace](https://placehold.co/600x400/EEE/31343C)
-
-**Why it matters:** Seeing what access they already have avoids over- or under-granting.
+**Why it matters:** When you are away, your delegate can keep approvals moving without getting permanent approver rights.
 
 ---
 
 ## Open Sakura from an approval email
 
 1. When you receive an approval email from Sakura, click the **link** in the email.
-2. You will be taken to Sakura (sign in if needed) and landed on the **approval screen** for that request (or the pending approvals list).
+2. You will be taken to Sakura (sign in if needed) and landed on **My approvals** or the relevant request.
 
 ![Approval email with link to Sakura](https://placehold.co/600x400/EEE/31343C)
 
 **Why it matters:** You can act on approvals directly from your inbox without searching in Sakura.
-
----
-
-## Set up delegates
-
-1. Go to **Delegates** or **My delegates** (or **Settings → Delegates**).
-2. Add a **delegate**: the person who can approve on your behalf.
-3. Set a **start** and **end** date/time so the delegation is time-limited.
-4. Save. Your delegate will be able to see and act on approvals that would otherwise come to you.
-
-![Delegate form – person and date range](https://placehold.co/600x400/EEE/31343C)
-
-**Why it matters:** When you are away, your delegate can keep approvals moving without giving them permanent approver rights.
 
 ---
 
