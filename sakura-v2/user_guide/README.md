@@ -37,7 +37,7 @@ Choose your role to jump to the right section. Each guide uses the **exact same 
 
 Before following any role-specific steps, sign in with your work account.
 
-1. Open the Sakura URL (e.g. your organisation’s Sakura link — Dev, UAT, or Production).
+1. Open the Sakura URL (e.g. your organisation’s Sakura link — Dev(https://orange-sand-03a59b103.3.azurestaticapps.net/), UAT, or Production).
 2. When prompted, sign in with your **work (Microsoft) account** (e.g. `your.name@dentsu.com`).
 3. After sign-in, you are taken to the Sakura home or dashboard.
 
@@ -66,5 +66,6 @@ Before following any role-specific steps, sign in with your work account.
 ---
 
 *Start with your role above and follow the linked guide. Every section has numbered steps and an image so you always know what to do. All links in this table stay inside the User Guide.*
+
 
 
