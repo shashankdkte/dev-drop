@@ -47,7 +47,7 @@ This guide is for **Workspace Admins** (WSO): users who manage a workspace’s a
 2. Open **WSO Console** or **Workspace Console** (or the equivalent menu item).
 3. You will see a list of **workspaces where you are an owner**. Select the workspace you want to manage.
 
-![WSO Console – list of my workspaces](https://placehold.co/600x400/EEE/31343C)
+![Image](screenshots/02_wso_console.png)
 
 **Why it matters:** All following steps apply to the workspace you select. The console is the single place to manage apps, reports, audiences, and security.
 
@@ -59,7 +59,8 @@ This guide is for **Workspace Admins** (WSO): users who manage a workspace’s a
 2. Update fields as needed: **name**, **code**, **owner**, **technical owner**, **approver**, **domain**, **tag**, **Entra Group UID**.
 3. Click **Save**.
 
-![Workspace properties / edit form](https://placehold.co/600x400/EEE/31343C)
+![Image](screenshots/03_wso_workpace_selected.png)
+
 
 **Why it matters:** Correct owners and approvers ensure the right people can manage the workspace and approve access.
 
@@ -235,3 +236,4 @@ This guide is for **Workspace Admins** (WSO): users who manage a workspace’s a
 - **Administrators** create workspaces and manage app-wide settings: see [Administrator guide](Administrator.md).
 
 *Everything you need is in this User Guide; the list in "What you can do as a Workspace Admin" is the full set of workspace capabilities.*
+
