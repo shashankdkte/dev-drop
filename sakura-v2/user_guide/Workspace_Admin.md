@@ -122,14 +122,27 @@ The **apps table** lists each app with: **App code**, **App name**, **App owner*
 
 **Why it matters:** Apps are the containers for audiences and reports. **Approval Workflow** determines whether access is by app-level approval (App Based) or by audience (Audience Based / AUR). **OLS Security Mode** and **App Entra Group UID** (when Managed) control how Sakura syncs with Power BI and Entra ID.
 
+### View Details
+
+1. open the **Actions** menu (⋮)
+![Apps list showing the newly added app](screenshots/12_action_app_menu.png)
+2.  Click **View Details**.
+   
+![Apps list showing the newly added app](screenshots/13_view_details_app.png)
+
 ### Edit app
 
 1. In the **Apps** tab, find the app and open the **Actions** menu (⋮).
 2. Click **Edit App**. The same form opens with existing values; **App code** is read-only.
+![Apps list showing the newly added app](screenshots/14_edit_app.png)
 3. Change **App name**, **App owner**, **Support contact**, **OLS Security Mode**, **App Entra Group UID** (if Managed), **Approval Workflow**, **OLS approver** (if App Based), or **Additional Dynamic Questions**. Click **Update App**.
 
-![Apps list – Actions menu with Edit App](screenshots/wso-apps-list-actions.png)
+![Apps list showing the newly added app](screenshots/15_update_success_app_message.png)
 
+
+Update approver since app based 
+
+![Apps list showing the newly added app](screenshots/16_update_Approver_App_Based.png)
 **Why it matters:** Keeping app details correct ensures the right approval flow and naming for requesters and approvers.
 
 ### Activate app
@@ -300,6 +313,7 @@ The **apps table** lists each app with: **App code**, **App name**, **App owner*
 - **Administrators** create workspaces and manage app-wide settings: see [Administrator guide](Administrator.md).
 
 *Everything you need is in this User Guide; the list in "What you can do as a Workspace Admin" is the full set of workspace capabilities.*
+
 
 
 
