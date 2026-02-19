@@ -331,27 +331,27 @@ The **table** shows: **Report Name**, **Report Code**, **Audience Name**, **App 
 4. Select one or more **Reports** to link to that audience. Only **AUR (Audience-based)** reports are listed. You can select multiple reports.
 5. Click **Apply** or **Save**. A success message appears and the new mappings show in the table.
 
-![Add Mapping – Report to Audience](screenshots/51_report_to aud_add.png)
+![Add Mapping – Report to Audience](screenshots/51_report_to%20aud_add.png)
 
 *Screen: Add Mapping modal opened — first step to link reports to an audience.*
 
-![Add Mapping – select application](screenshots/52_report_to aud_add_select_application.png)
+![Add Mapping – select application](screenshots/52_report_to%20aud_add_select_application.png)
 
 *Screen: Application (App) dropdown — choose the Audience Based app that owns the audience.*
 
-![Add Mapping – select audience](screenshots/53_report_to aud_add_select_audience.png)
+![Add Mapping – select audience](screenshots/53_report_to%20aud_add_select_audience.png)
 
 *Screen: Audience dropdown — choose the audience to link reports to (filtered by the app you selected).*
 
-![Add Mapping – select populated reports](screenshots/54_report_to aud_add_select_populated_reports.png)
+![Add Mapping – select populated reports](screenshots/54_report_to%20aud_add_select_populated_reports.png)
 
 *Screen: List of reports — select one or more AUR reports to link to the chosen audience.*
 
-![Apply mapping](screenshots/54_report_to aud_apply_mapping.png)
+![Apply mapping](screenshots/54_report_to%20aud_apply_mapping.png)
 
 *Screen: Apply or Save control — confirm the mapping after selecting app, audience, and reports.*
 
-![Apply mapping success](screenshots/55_report_to aud_apply_mapping_success.png)
+![Apply mapping success](screenshots/55_report_to%20aud_apply_mapping_success.png)
 
 *Screen: Success message after the report–audience mapping is created.*
 
@@ -364,15 +364,15 @@ The **table** shows: **Report Name**, **Report Code**, **Audience Name**, **App 
 1. In the **Report → Audience** table, find the row (report + audience) you want to remove.
 2. Click the **Delete** (trash) button in the **Actions** column. Confirm in the dialog. A success message confirms the mapping was removed.
 
-![Delete mapping – button](screenshots/56_report_to aud_delete_mapping.png)
+![Delete mapping – button](screenshots/56_report_to%20aud_delete_mapping.png)
 
 *Screen: Delete (trash) button in the Actions column for a report–audience row.*
 
-![Delete mapping – confirmation question](screenshots/57_report_to aud_delete_mapping_question.png)
+![Delete mapping – confirmation question](screenshots/57_report_to%20aud_delete_mapping_question.png)
 
 *Screen: Confirmation dialog asking you to confirm removal of the mapping.*
 
-![Delete mapping – success message](screenshots/58_report_to aud_delete_mapping_sucess_message.png)
+![Delete mapping – success message](screenshots/58_report_to%20aud_delete_mapping_sucess_message.png)
 
 *Screen: Success message after the mapping is deleted.*
 
