@@ -129,11 +129,9 @@ The **table** shows one row per app with: **App code**, **App name**, **App owne
 To see full details of an app without editing:
 
 1. In the **Apps** tab, find the app and open the **Actions** menu (⋮).
-![Actions menu (⋮) on an app row](screenshots/12_action_app_menu.png)
-
 2. Click **View Details**. A panel or page opens with the app’s details.
 
-
+![Actions menu (⋮) on an app row](screenshots/12_action_app_menu.png)
 
 ![View Details – app details panel or page](screenshots/13_view_details_app.png)
 
@@ -322,26 +320,119 @@ AUR (Audience) reports are delivered to users who belong to an audience. You lin
 
 ## Manage Reports in the workspace
 
-### Add a report
+Reports are what users request access to. Each report has a **delivery method**: **AUR (Audience-based)** — access via audience membership, linked in the Mappings tab; or **SAR (Single Access)** — user requests access and **Approvers** approve. This section covers how to list, add, view, edit, update approvers (SAR), activate/deactivate, and delete reports.
 
-1. In the WSO Console, select your workspace and open the **Reports** tab or section.
-2. Click **Add report**.
-3. Enter **Report code** and **Report name**.
-4. Choose **Report delivery method**:
-   - **AUR (Audience report):** delivered via an app audience; no per-report approvers.
-   - **SAR (Single access report):** user requests access; you must enter **Approvers** (semicolon-separated emails).
-5. For SAR, fill in **Approvers**. Then click **Save**.
+---
 
-![Add report form – delivery method and approvers](screenshots/wso-report-add-form.png)
+### List reports
 
-**Why it matters:** Reports are what users request access to. AUR = access by audience membership; SAR = access by approval. The system uses the Approvers field to route SAR requests.
+1. In the WSO Console, select your workspace (filter by workspace).
+2. Open the **Reports** tab (**Workspace Reports**).
 
-### Edit or deactivate a report
+You will see:
 
-1. In **Reports**, find the report and click **Edit** or **Deactivate**.
-2. For edit: change fields (including Approvers for SAR) and **Save**. For deactivate: confirm.
+- **Search** — Filter reports by name, code, tag, or owner.
+- **Active only** — Toggle **on** to show only active reports; turn **off** to include inactive.
+- **Refresh** — Reload the list from the server.
+- **Add new Report** — Opens the form to add a report (see [Add report](#add-report)).
 
-![Reports list with Edit / Deactivate](screenshots/wso-reports-list-actions.png)
+The **table** shows one row per report with: **Report Code**, **Report Name**, **Report Tag**, **Delivery Method** (Single Access or Audience-based), **Owner**, **Status**, and **Actions** (⋮). In the **Actions** menu you can **View Details**, **Edit Report Details**, **Update Approvers** (SAR only), toggle **Active/Inactive**, or **Delete Report**. The header shows how many reports are listed (e.g. “Showing X of Y total”).
+
+![Reports tab – search, Active only, Refresh, Add new Report, and table](screenshots/29_list_report.png)
+
+---
+
+### Add report
+
+1. In the WSO Console, select your workspace and open the **Reports** tab.
+2. Click **Add new Report**.
+
+3. Fill in the form:
+
+   | Field | What to enter |
+   |-------|----------------|
+   | **Report code** | Unique code (e.g. FIN_MONTHLY). Cannot be changed after creation. |
+   | **Report name** | The display name users will see. |
+   | **Workspace** | Select the workspace (if not already set by the filter). |
+   | **Report tag** | A tag for grouping or filtering reports. |
+   | **Report owner** | One or two owner email addresses. |
+   | **Delivery method** | **Audience-based (AUR)** — access via audiences; link the report to audiences in the **Mappings** tab. **Single Access (SAR)** — users request access; you must set **Approvers**. |
+   | **Approvers** | For **SAR** only. One or more approver emails (up to 10). Required for SAR. |
+   | **Entra Group UID** | Optional. Reserved for future use. |
+   | **Description** | Optional. Helps users understand what the report provides. |
+   | **Keywords** | Optional. Comma-separated, max 10, for search. |
+
+![Form filling – SAR report (code, name, delivery method, approvers)](screenshots/31_Form_filling_report_sar.png)
+
+![Form filling – SAR report with keywords](screenshots/32_form_filling_report_sar_keywords.png)
+
+4. For **AUR** reports, leave Approvers empty; fill **Report code**, **Report name**, **Workspace**, **Report tag**, **Report owner**, and **Delivery method = Audience-based**. Then add the report and link it to audiences in the **Mappings** tab.
+
+![Form filling – AUR report creation](screenshots/34_form_filling_aur_Report_creation.png)
+
+5. Click **Add Report**. A success message appears and the report is added to the list.
+
+![Success after SAR report creation](screenshots/33_success_sar_report_creation.png)
+
+**Why it matters:** **AUR** reports are delivered to users in the audiences you link in Mappings. **SAR** reports require user requests; the **Approvers** you set receive and act on those requests.
+
+---
+
+### View Details
+
+To see full details of a report without editing:
+
+1. In the **Reports** tab, find the report and open the **Actions** menu (⋮), or click the report name.
+2. Click **View Details**. A panel or modal opens with the report’s details (code, name, tag, delivery method, owner, approvers if SAR, status, etc.).
+
+![View Details – report details panel or modal](screenshots/35_view_Details_report.png)
+
+---
+
+### Edit report
+
+1. In the **Reports** tab, find the report and open the **Actions** menu (⋮).
+2. Click **Edit Report Details**. The form opens with the current values. **Report code** cannot be changed.
+3. Update **Report name**, **Report tag**, **Report owner**, **Delivery method**, **Approvers** (for SAR), **Description**, or **Keywords** as needed.
+4. Click **Save Changes**. A success message confirms the update.
+
+**Why it matters:** Keeping report details and approvers correct ensures the right people approve SAR requests and users see accurate names and tags.
+
+---
+
+### Update Approvers (SAR only)
+
+For **Single Access (SAR)** reports, you can change approvers without editing other fields:
+
+1. In the **Reports** tab, find the **SAR** report and open the **Actions** menu (⋮).
+2. Click **Update Approvers**. A dialog or form opens with the current approver emails.
+3. Add, remove, or change email addresses. Save. These approvers receive access requests for this report.
+
+![Update Approvers – SAR report](screenshots/37_sar_update_approvers.png)
+
+---
+
+### Activate or deactivate a report
+
+Reports have an **Active/Inactive** status. Inactive reports do not appear for new requests (existing access may still apply, depending on your organisation).
+
+1. In the **Reports** tab, find the report and open the **Actions** menu (⋮).
+2. Use the **Active/Inactive** toggle in the menu. When you turn it off, the report becomes **Inactive**; turn it on to make it **Active** again. Confirm if a dialog appears.
+
+![Deactivate report – toggle or confirmation](screenshots/36_deactivate_report.png)
+
+**Why it matters:** Deactivating hides the report from new requests while keeping history. Activating restores it without recreating it.
+
+---
+
+### Delete report
+
+Removing a report is permanent. Ensure no critical mappings or access depend on it before deleting.
+
+1. In the **Reports** tab, find the report and open the **Actions** menu (⋮).
+2. Click **Delete Report**. Confirm in the dialog. The report is removed from the workspace.
+
+**Why it matters:** Delete only when the report is no longer needed. Consider deactivating instead if you may need it again.
 
 ---
 
@@ -438,9 +529,6 @@ AUR (Audience) reports are delivered to users who belong to an audience. You lin
 - **Administrators** create workspaces and manage app-wide settings: see [Administrator guide](Administrator.md).
 
 *Everything you need is in this User Guide; the list in "What you can do as a Workspace Admin" is the full set of workspace capabilities.*
-
-
-
 
 
 
