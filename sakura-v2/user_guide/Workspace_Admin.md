@@ -50,6 +50,8 @@ This guide is for **Workspace Admins** (WSO): users who manage a workspace’s a
 
 ![WSO Console – list of workspaces where you are an owner](screenshots/02_wso_console.png)
 
+*Screen: WSO Console showing the list of workspaces where you are an owner.*
+
 **Why it matters:** All following steps apply to the workspace you select. The console is the single place to manage apps, reports, audiences, and security.
 
 ---
@@ -60,6 +62,7 @@ Workspaces are created and assigned by **Sakura Administrators**. You only see w
 
 ![Workspace selected – workspace name and context shown](screenshots/03_wso_workpace_selected.png)
 
+*Screen: Selected workspace — name and context shown in the header.*
 
 **Why it matters:** Correct owners and approvers ensure the right people can manage the workspace and approve access.
 
@@ -88,12 +91,16 @@ The **table** shows one row per app with: **App code**, **App name**, **App owne
 
 ![Apps tab – search, Active only toggle, Refresh, Add new app, and apps table](screenshots/04_list_apps.png)
 
+*Screen: Apps tab with search, Active only toggle, Refresh, Add new app, and the apps table.*
+
 ### Add App
 
 1. In the WSO Console, select your workspace and open the **Apps** tab.
 2. Click **Add new app**.
 
 ![Add new app button on the Apps tab](screenshots/05_add_app_btn.png)
+
+*Screen: Add new app button on the Apps tab.*
 
 3. Fill in the form:
 
@@ -110,18 +117,30 @@ The **table** shows one row per app with: **App code**, **App name**, **App owne
 
 ![Add new app form – code, name, workspace, owners, security and approval](screenshots/06_add_new_app_form.png)
 
+*Screen: Add new app form with code, name, workspace, owners, security and approval fields.*
+
 ![Filled add app form with sample values](screenshots/07_filled_app_form.png)
+
+*Screen: Filled add app form with sample values.*
 
 ![Managed OLS mode – App Entra Group UID field (required when Managed)](screenshots/08_managed_entra_id.png)
 
+*Screen: Managed OLS mode — App Entra Group UID field (required when Managed).*
+
 ![Additional Dynamic Questions editor (optional)](screenshots/09_additional_questions.png)
+
+*Screen: Additional Dynamic Questions editor (optional).*
 
 4. Click **Add new app**. A success message appears and the app is added to the list.
 5. To see the new app in the list, turn **Active only** off if it does not appear.
 
 ![Success message after adding an app](screenshots/10_success_message_app.png)
 
+*Screen: Success message after adding an app.*
+
 ![Apps list showing the newly added app](screenshots/11_newly_added_app.png)
+
+*Screen: Apps list showing the newly added app.*
 
 **Why it matters:** Apps are the containers for audiences and reports. **Approval Workflow** controls whether access is approved once per app (App Based) or per audience (Audience Based). **OLS Security Mode** and **App Entra Group UID** (when Managed) control how Sakura syncs with Power BI and Entra ID.
 
@@ -134,7 +153,11 @@ To see full details of an app without editing:
 
 ![Actions menu (⋮) on an app row](screenshots/12_action_app_menu.png)
 
+*Screen: Actions menu (⋮) on an app row — View Details, Edit App, Deactivate App.*
+
 ![View Details – app details panel or page](screenshots/13_view_details_app.png)
+
+*Screen: View Details — app details panel or page.*
 
 ### Edit app
 
@@ -145,9 +168,15 @@ To see full details of an app without editing:
 
 ![Edit App – open the Actions menu and choose Edit App](screenshots/14_edit_app.png)
 
+*Screen: Edit App — open the Actions menu and choose Edit App.*
+
 ![Update success message after editing an app](screenshots/15_update_success_app_message.png)
 
+*Screen: Update success message after editing an app.*
+
 ![Editing OLS approver for an App Based app](screenshots/16_update_Approver_App_Based.png)
+
+*Screen: Editing OLS approver for an App Based app.*
 
 **Why it matters:** Keeping app details and approvers correct ensures the right approval flow and contact information for requesters and approvers.
 
@@ -161,7 +190,11 @@ To make a previously deactivated app active again:
 
 ![Activate app – turn Active only off and use Actions menu](screenshots/18_activate_app_screen_first.png)
 
+*Screen: Activate app — turn Active only off and use the Actions menu.*
+
 ![Activate confirmation (if shown)](screenshots/19_question_activate.png)
+
+*Screen: Activate confirmation dialog (if shown).*
 
 **Why it matters:** Activating an app restores it for new access requests without having to add it again.
 
@@ -176,6 +209,8 @@ To stop an app from being used for new requests (existing access may still apply
 3. Confirm in the dialog. The app status becomes inactive and it no longer appears for new access requests.
 
 ![Actions menu with Deactivate App](screenshots/17_deactivate_app.png)
+
+*Screen: Actions menu with Deactivate App option.*
 
 **Why it matters:** Deactivating hides the app from new requests while keeping history and existing access as defined by your organisation.
 
@@ -205,6 +240,8 @@ The **table** shows one row per audience with: **Audience name**, **Audience cod
 
 ![Audiences tab – search, Active only, Refresh, Add new audience, and table](screenshots/20_audiences.png)
 
+*Screen: Audiences tab with search, Active only, Refresh, Add new audience, and the table.*
+
 ---
 
 ### Add audience
@@ -213,6 +250,8 @@ The **table** shows one row per audience with: **Audience name**, **Audience cod
 2. Click **Add new audience**.
 
 ![Add new audience button on the Audiences tab](screenshots/21_add_new_audience_form.png)
+
+*Screen: Add new audience button on the Audiences tab.*
 
 3. Fill in the form:
 
@@ -226,11 +265,17 @@ The **table** shows one row per audience with: **Audience name**, **Audience cod
 
 ![Add audience form – name, workspace, app, OLS approver, Entra Group ID](screenshots/21_add_new_audience_form.png)
 
+*Screen: Add audience form with name, workspace, app, OLS approver, and Entra Group ID.*
+
 ![Filled add audience form with sample values](screenshots/22_add_new_audience_dummy.png)
+
+*Screen: Filled add audience form with sample values.*
 
 4. Click **Add new audience**. A success message appears and the audience is added to the list.
 
 ![Success message after adding an audience](screenshots/25_success_audience.png)
+
+*Screen: Success message after adding an audience.*
 
 **Why it matters:** Each audience represents a group of users who get access to the reports you link to it. **OLS approvers** receive and act on access requests for this audience. **Entra Group ID** lets Sakura sync with your Entra group when configured.
 
@@ -245,7 +290,11 @@ To see full details of an audience without editing:
 
 ![Actions menu (⋮) on an audience row](screenshots/24_action_audience_menu.png)
 
+*Screen: Actions menu (⋮) on an audience row — View Details, Edit, Update OLS Approvers, Active/Inactive, Delete.*
+
 ![View Details – audience details panel or modal](screenshots/23_view_detail_audience.png)
+
+*Screen: View Details — audience details panel or modal.*
 
 ---
 
@@ -258,7 +307,11 @@ To see full details of an audience without editing:
 
 ![Edit audience – open Actions and choose Edit Audience Details](screenshots/24_action_audience_menu.png)
 
+*Screen: Edit audience — open Actions and choose Edit Audience Details.*
+
 ![Update audience success message](screenshots/25_success_audience.png)
+
+*Screen: Update audience success message.*
 
 **Why it matters:** Keeping audience name and approvers correct ensures the right people approve requests and users see the right labels.
 
@@ -274,6 +327,8 @@ To change only the approvers for an audience (without editing other fields):
 
 ![Update OLS Approvers – dialog or form](screenshots/26_update_approvers.png)
 
+*Screen: Update OLS Approvers — dialog or form with current approver emails.*
+
 ---
 
 ### Activate or deactivate an audience
@@ -285,7 +340,11 @@ Audiences have an **Active/Inactive** status. Inactive audiences do not appear f
 
 ![Audience Actions menu – Activate](screenshots/27_activate_audience.png)
 
+*Screen: Audience Actions menu — Activate option.*
+
 ![Deactivate audience – confirmation (if shown)](screenshots/28_deactivate_audience_question.png)
+
+*Screen: Deactivate audience — confirmation dialog (if shown).*
 
 **Why it matters:** Deactivating hides the audience from new requests while keeping history. Activating restores it without recreating it.
 
@@ -299,6 +358,8 @@ Removing an audience is permanent. Ensure no critical report–audience mappings
 2. Click **Delete Audience**. Confirm in the dialog. The audience is removed from the workspace.
 
 ![Audience Actions menu – Delete Audience](screenshots/24_action_audience_menu.png)
+
+*Screen: Audience Actions menu — Delete Audience option.*
 
 **Why it matters:** Delete only when the audience is no longer needed. Consider deactivating instead if you may need it again.
 
@@ -400,6 +461,8 @@ The **table** shows one row per report with: **Report Code**, **Report Name**, *
 
 ![Reports tab – search, Active only, Refresh, Add new Report, and table](screenshots/29_list_report.png)
 
+*Screen: Reports tab with search, Active only, Refresh, Add new Report, and the table.*
+
 ---
 
 ### Add report
@@ -424,15 +487,23 @@ The **table** shows one row per report with: **Report Code**, **Report Name**, *
 
 ![Form filling – SAR report (code, name, delivery method, approvers)](screenshots/31_Form_filling_report_sar.png)
 
+*Screen: Form filling — SAR report with code, name, delivery method, and approvers.*
+
 ![Form filling – SAR report with keywords](screenshots/32_form_filling_report_sar_keywords.png)
+
+*Screen: Form filling — SAR report with keywords.*
 
 4. For **AUR** reports, leave Approvers empty; fill **Report code**, **Report name**, **Workspace**, **Report tag**, **Report owner**, and **Delivery method = Audience-based**. Then add the report and link it to audiences in the **Mappings** tab.
 
 ![Form filling – AUR report creation](screenshots/34_form_filling_aur_Report_creation.png)
 
+*Screen: Form filling — AUR report creation.*
+
 5. Click **Add Report**. A success message appears and the report is added to the list.
 
 ![Success after SAR report creation](screenshots/33_success_sar_report_creation.png)
+
+*Screen: Success message after SAR report creation.*
 
 **Why it matters:** **AUR** reports are delivered to users in the audiences you link in Mappings. **SAR** reports require user requests; the **Approvers** you set receive and act on those requests.
 
@@ -446,6 +517,8 @@ To see full details of a report without editing:
 2. Click **View Details**. A panel or modal opens with the report’s details (code, name, tag, delivery method, owner, approvers if SAR, status, etc.).
 
 ![View Details – report details panel or modal](screenshots/35_view_Details_report.png)
+
+*Screen: View Details — report details panel or modal.*
 
 ---
 
@@ -470,6 +543,8 @@ For **Single Access (SAR)** reports, you can change approvers without editing ot
 
 ![Update Approvers – SAR report](screenshots/37_sar_update_approvers.png)
 
+*Screen: Update Approvers — SAR report dialog or form.*
+
 ---
 
 ### Activate or deactivate a report
@@ -480,6 +555,8 @@ Reports have an **Active/Inactive** status. Inactive reports do not appear for n
 2. Use the **Active/Inactive** toggle in the menu. When you turn it off, the report becomes **Inactive**; turn it on to make it **Active** again. Confirm if a dialog appears.
 
 ![Deactivate report – toggle or confirmation](screenshots/36_deactivate_report.png)
+
+*Screen: Deactivate report — toggle or confirmation in the Actions menu.*
 
 **Why it matters:** Deactivating hides the report from new requests while keeping history. Activating restores it without recreating it.
 
@@ -512,6 +589,8 @@ The **table** shows: **Model name**, **Code**, **Security types** (badges), **Di
 
 ![Security Models list – filter, search, Active only, Refresh, Add security model, table](screenshots/39_security_models.png)
 
+*Screen: Security Models list with filter, search, Active only, Refresh, Add security model, and table.*
+
 ---
 
 ### Add security model
@@ -523,7 +602,11 @@ The **table** shows: **Model name**, **Code**, **Security types** (badges), **Di
 
 ![Add new security model with security type selection](screenshots/40_add_new_security_model_with_type.png)
 
+*Screen: Add new security model form with security type selection.*
+
 ![Success after security model creation](screenshots/41_success_security_model_creation.png)
+
+*Screen: Success message after security model creation.*
 
 **Why it matters:** Security models group security types that apply to reports. Linking types at creation (or in Mappings) defines which dimensions the model uses for RLS approval routing.
 
@@ -626,23 +709,39 @@ Security types (e.g. Region, Cost Centre) are linked to security models so the m
 
 ![Mappings tab – Security Model → Type view](screenshots/42_mapping_focusing_security_model_to_type.png)
 
+*Screen: Mappings tab with Security Model → Type view — table and Add Mapping button.*
+
 3. **Add a mapping:** Click **Add Mapping**. Select a **Security model** from the dropdown. The available **Security types** for that model (from the List of Values) are shown; select one or more types to link to the model. Click **Apply** or **Save** to create the mapping(s).
 
 ![Add mapping – select security model](screenshots/43_add_mapping_sec_model_to_type_select_model.png)
 
+*Screen: Add mapping — select security model from dropdown.*
+
 ![Add mapping – selection from dropdown](screenshots/44_add_mapping_sec_model_to_type_selection_from_dropdown.png)
+
+*Screen: Add mapping — selection from dropdown.*
 
 ![Add mapping – model selected, types available](screenshots/45_add_mapping_sec_model_to_type_model_selected_types_available.png)
 
+*Screen: Add mapping — model selected, security types available to link.*
+
 ![Apply mapping – Security Model to Type](screenshots/46_apply_mapping_sec_model_to_type_select_model.png)
+
+*Screen: Apply mapping — Security Model to Type.*
 
 4. **Remove a mapping:** In the table, find the row (Security Model + Security Type) and click the **Delete** (trash) button. Confirm in the dialog. A success message confirms the removal.
 
 ![Delete mapping – button](screenshots/47_delete_mapping_sec_model_to_type_button.png)
 
+*Screen: Delete mapping — trash button in the Actions column.*
+
 ![Delete mapping – confirmation question](screenshots/48_delete_mapping_sec_model_to_type_question.png)
 
+*Screen: Delete mapping — confirmation dialog.*
+
 ![Delete mapping – success message](screenshots/49_delete_mapping_sec_model_to_type_success_message.png)
+
+*Screen: Delete mapping — success message after removal.*
 
 **Why it matters:** Security model → type mappings define which dimensions (e.g. Region, Cost Centre) each model uses. RLS approvers are then assigned per security type/dimension so requests are routed correctly.
 
@@ -660,6 +759,8 @@ You’ll see **two tabs**:
 Use **Filter by workspace** at the top to limit the list to one workspace.
 
 ![Approver assignments – OLS and RLS tabs](screenshots/64_approver_assignments.png)
+
+*Screen: Approver assignments — OLS and RLS tabs with Filter by workspace.*
 
 ---
 
@@ -691,6 +792,8 @@ OLS approvers are first set when you create or edit an **App** (App Based) or an
 
 ![RLS approvers list](screenshots/65_rls_approver_assignment_list.png)
 
+*Screen: RLS approvers list — security dimensions and Assign/Reassign actions.*
+
 ---
 
 ### Assign RLS Approver — step-by-step
@@ -701,13 +804,19 @@ To assign an RLS approver to a security dimension:
 
 ![Assign RLS Approver modal](screenshots/66_assign_rls_Approver.png)
 
+*Screen: Assign RLS Approver modal — assign an RLS approver to a security dimension.*
+
 2. **Choose Security Model** — In the dropdown, select the **Security model** (e.g. AMER, CDI). This loads the security types for that model.
 
 ![Select security model](screenshots/67_assign_rls_approver_select_security_model.png)
 
+*Screen: Select security model from dropdown.*
+
 3. **Choose Security Type** — Select the **Security type** (e.g. Region, Cost Centre). This loads the **Dimension combination** options.
 
 ![Select security type](screenshots/68_assign_rls_approver_select_security_type.png)
+
+*Screen: Select security type (e.g. Region, Cost Centre).*
 
 4. **Choose the dimension combination** — You can either:
    - **Simple (no wizard):** Leave **“Use Step-by-Step Wizard”** unchecked and pick the dimension value(s) from the list or dropdowns shown.
@@ -715,17 +824,27 @@ To assign an RLS approver to a security dimension:
 
 ![Simple way – uncheck wizard](screenshots/69_way_simple_uncheck_wizard_checkbox.png)
 
+*Screen: Simple way — uncheck Use Step-by-Step Wizard to pick dimension from list.*
+
 ![Select entity / dimension](screenshots/70_assign_rls_select_entity.png)
+
+*Screen: Select entity or dimension from list or dropdowns.*
 
 For workspace types that use multiple levels (e.g. Market, Org, Client, Service Line), the wizard guides you step by step:
 
 ![Select entity – market / org based](screenshots/71_assign_rls_select_entity_market_org_based.png)
 
+*Screen: Select entity — market/org-based wizard step.*
+
 ![Dimension ready – all selections made](screenshots/72_assign_rls_select_entity_market_org_based_client_all_service_line_sel_dimension_ready.png)
+
+*Screen: Dimension ready — all selections made in the wizard.*
 
 5. **Enter the approver** — In **RLS Approver**, enter the **approver email** (required). Optionally add a **Reason** (e.g. “Region owner for EMEA”). The **Assign Approver** button becomes active when the dimension and approver are valid.
 
 ![Ready to assign – dimension and approver filled](screenshots/73_rls_assign_approver_ready_with_dimension.png)
+
+*Screen: Ready to assign — dimension and approver email filled; Assign Approver button active.*
 
 6. **Save** — Click **Assign Approver**. The modal closes and the new approver appears on that dimension in the RLS table. Requests for that dimension will be routed to this approver.
 
@@ -750,6 +869,8 @@ The **table** shows one row per request: **Request ID**, **Requested by**, **Req
 
 ![Permission requests list](screenshots/75_permission_Request_list.png)
 
+*Screen: Permission requests list — filter by workspace, search, status filters, and table.*
+
 **Why it matters:** You can quickly find requests by ID, requester, or status and see at a glance whether OLS and RLS are pending or approved.
 
 ---
@@ -765,9 +886,13 @@ The **table** shows one row per request: **Request ID**, **Requested by**, **Req
 
 ![Permission request details – OLS items](screenshots/76_permission_Request_details_only_ols.png)
 
+*Screen: Permission request details — OLS items (app, audience, or report access).*
+
 **RLS details** — Row-level security items (e.g. access to a security model/dimension):
 
 ![Permission request details – RLS items](screenshots/75_permission_Request_details_only_rls.png)
+
+*Screen: Permission request details — RLS items (security model and dimension).*
 
 **Why it matters:** Seeing OLS and RLS details helps you understand what access was requested and how it was approved (or pending), so you can answer questions or revoke if needed.
 
@@ -783,6 +908,8 @@ When a user should no longer have the access that was granted (e.g. role change 
 
 ![Revoke request confirmation](screenshots/wso-revoke-request.png)
 
+*Screen: Revoke request — confirmation dialog.*
+
 **Why it matters:** Revoking removes or flags the granted access so it can be taken back by your organisation’s process.
 
 ---
@@ -795,6 +922,8 @@ When a user should no longer have the access that was granted (e.g. role change 
 
 ![User security context in workspace](screenshots/wso-user-security-context.png)
 
+*Screen: User security context in workspace — OLS/RLS access for the selected user.*
+
 **Why it matters:** This helps you verify what access a user has before approving or revoking.
 
 ---
@@ -806,6 +935,8 @@ When a user should no longer have the access that was granted (e.g. role change 
 3. Click to generate and download the Excel file.
 
 ![Export to Excel button or option](screenshots/wso-export-excel.png)
+
+*Screen: Export to Excel button or option in the WSO Console.*
 
 **Why it matters:** Exports are useful for auditing, backup, or offline review of workspace configuration.
 
