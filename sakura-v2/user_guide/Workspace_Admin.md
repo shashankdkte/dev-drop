@@ -12,13 +12,13 @@ This guide is for **Workspace Admins** (WSO): users who manage a workspace’s a
 | [Change workspace properties](#change-workspace-properties) | Edit owner, approver, domain, etc. |
 | [Manage Apps](#manage-apps-in-the-workspace) | List, add, edit, activate, deactivate apps |
 | [Manage Audiences](#manage-audiences-for-audience-based-apps) | Add audiences for audience-based apps |
-| [Associate reports with audience (AUR)](#associate-reports-with-an-audience-aur-only) | Link AUR reports to audiences |
+| [Associate reports with audience (Report → Audience)](#associate-reports-with-an-audience-report--audience) | Link AUR reports to audiences (Mappings tab) |
 | [Manage Reports](#manage-reports-in-the-workspace) | Add/edit reports, set AUR vs SAR and approvers |
 | [Manage Security Models](#manage-security-models-in-the-workspace) | List, add, edit, activate/deactivate security models |
 | [Link reports to Security Models](#link-reports-to-security-models-report--security-model) | Assign which security models a report uses (Mappings tab) |
 | [Map Security Model to Security Type](#map-security-model-to-security-type-security-model--type) | Link security types to models (Mappings tab) |
-| [Manage RLS Approvers](#manage-rls-approvers-for-your-security-models) | Assign RLS approvers to security models |
-| [View and revoke requests](#view-and-revoke-requests-in-your-workspace) | See and revoke workspace requests |
+| [Approver assignments](#approver-assignments) | View and assign OLS and RLS approvers |
+| [Permission requests](#permission-requests) | View and manage permission requests (list, details, revoke) |
 | [View user's security context](#view-a-users-security-context-in-the-workspace) | Check a user’s access in the workspace |
 | [Export to Excel](#export-workspace-data-to-excel) | Export workspace data |
 
@@ -304,18 +304,57 @@ Removing an audience is permanent. Ensure no critical report–audience mappings
 
 ---
 
-## Associate reports with an audience (AUR only)
+## Associate reports with an audience (Report → Audience)
 
-AUR (Audience) reports are delivered to users who belong to an audience. You link reports to audiences in the **Mappings** tab under **Report → Audience**.
+AUR (Audience) reports are delivered to users who belong to an audience. You link reports to audiences in **Object Management → Mappings** tab under **Report → Audience**. Only reports with **Delivery method = Audience-based (AUR)** should be linked here.
 
-1. In the WSO Console, select your workspace and open the **Mappings** tab.
-2. Select the **Report → Audience** mapping type (first button). You see a table of existing report–audience mappings and an **Add Mapping** button.
-3. Click **Add Mapping**. Choose the **App**, then the **Audience** (only audiences for that app are shown). Select one or more **Reports** (AUR reports) to link to that audience. Save or confirm.
-4. To remove a link: find the mapping in the table, open **Actions**, and delete the mapping. Confirm.
+---
 
-![Mappings tab – Report → Audience and Add Mapping](screenshots/wso-audience-associate-reports.png)
+### List Report → Audience mappings
 
-**Why it matters:** Linking a report to an audience gives everyone in that audience access to the report (AUR). Without a mapping, the report is not available to that audience. SAR (single-access) reports are not linked to audiences; they use report-level approvers instead.
+1. In the WSO Console, select your workspace and open **Object management** (Apps / Audiences / Reports / Mappings).
+2. Open the **Mappings** tab and select **Report → Audience** (first button). You see a **Search** box (by report or audience name), **Add Mapping**, and a table of existing mappings.
+
+The **table** shows: **Report Name**, **Report Code**, **Audience Name**, **App Name**, **Workspace**, **Created By**, **Created At**, and **Actions** (Delete). Use **Search** to filter; use the trash button in **Actions** to remove a mapping.
+
+![Report → Audience mappings list](screenshots/50_list_reports_to_audience_mappings.png)
+
+---
+
+### Add Report → Audience mapping
+
+1. In **Mappings → Report → Audience**, click **Add Mapping**.
+2. Select **Application (App)** from the dropdown. Only **Audience Based** apps appear. This filters the next step.
+3. Select **Audience**. Only audiences for the chosen app are shown.
+4. Select one or more **Reports** to link to that audience. Only **AUR (Audience-based)** reports are listed. You can select multiple reports.
+5. Click **Apply** or **Save**. A success message appears and the new mappings show in the table.
+
+![Add Mapping – Report to Audience](screenshots/51_report_to aud_add.png)
+
+![Add Mapping – select application](screenshots/52_report_to aud_add_select_application.png)
+
+![Add Mapping – select audience](screenshots/53_report_to aud_add_select_audience.png)
+
+![Add Mapping – select populated reports](screenshots/54_report_to aud_add_select_populated_reports.png)
+
+![Apply mapping](screenshots/54_report_to aud_apply_mapping.png)
+
+![Apply mapping success](screenshots/55_report_to aud_apply_mapping_success.png)
+
+**Why it matters:** Linking a report to an audience gives everyone in that audience access to the report (AUR). Without a mapping, the report is not available to that audience. SAR (single-access) reports use approvers instead and are not linked to audiences here.
+
+---
+
+### Delete Report → Audience mapping
+
+1. In the **Report → Audience** table, find the row (report + audience) you want to remove.
+2. Click the **Delete** (trash) button in the **Actions** column. Confirm in the dialog. A success message confirms the mapping was removed.
+
+![Delete mapping – button](screenshots/56_report_to aud_delete_mapping.png)
+
+![Delete mapping – confirmation question](screenshots/57_report_to aud_delete_mapping_question.png)
+
+![Delete mapping – success message](screenshots/58_report_to aud_delete_mapping_sucess_message.png)
 
 ---
 
@@ -503,16 +542,46 @@ The **table** shows: **Model name**, **Code**, **Security types** (badges), **Di
 
 ## Link reports to Security Models (Report → Security Model)
 
-Reports can use one or more **security models** for RLS. You link them in **Object Management → Mappings** tab.
+Reports can use one or more **security models** for row-level security (RLS). You link them in **Object Management → Mappings** tab under **Report → Security Model**. This determines which RLS dimensions and approvers apply when users request access to a report.
 
-1. In the WSO Console, select your workspace and open **Object management** (or the main object-management view). Open the **Mappings** tab.
-2. Select the **Report → Security Model** mapping type (second button). You see a table of existing report–security model mappings and an **Add Mapping** button.
-3. Click **Add Mapping**. Choose the **Security model**, then select one or more **Reports** to link to that model. Save or confirm.
-4. To remove a link: find the mapping in the table and use **Actions** (or Delete). Confirm.
+---
 
-![Report – assign security models](screenshots/wso-report-security-model-mapping.png)
+### List Report → Security Model mappings
 
-**Why it matters:** Linking a report to a security model tells the system which RLS dimensions and approvers apply when users request access to that report.
+1. In the WSO Console, select your workspace and open **Object management**.
+2. Open the **Mappings** tab and select **Report → Security Model** (second button). You see **Search** (by report or security model name), **Add Mapping**, and a table of existing mappings.
+
+The **table** shows: **Report Name**, **Report Code**, **Security Model Name**, **Security Model Code**, **Workspace**, **Created By**, **Created At**, and **Actions** (Delete). Use the trash button in **Actions** to remove a mapping.
+
+![Report → Security Model mappings list](screenshots/59_list_report_to_security_model.png)
+
+---
+
+### Add Report → Security Model mapping
+
+1. In **Mappings → Report → Security Model**, click **Add Mapping**.
+2. Select **Security model** from the dropdown. Models for your workspace(s) are listed.
+3. After the model is selected, the list of **Reports** is shown (or populated). Select one or more reports to link to that security model.
+4. Click **Apply** or **Save**. A success message appears and the new mappings show in the table.
+
+![Add Mapping – Report to Security Model](screenshots/60_report_to_sec_model_map_add.png)
+
+![Add Mapping – select security model](screenshots/61_report_to_sec_model_map_select_model.png)
+
+![Add Mapping – model selected, reports populated](screenshots/62_report_to_sec_model_map_model_selected_populated.png)
+
+![Apply mapping](screenshots/63_report_to_sec_model_map_apply.png)
+
+![Apply mapping success](screenshots/63_report_to_sec_model_map_success.png)
+
+**Why it matters:** Linking a report to a security model tells the system which RLS dimensions and approvers apply when users request access to that report. RLS approvers are assigned per security model/type in the **Manage RLS Approvers** area.
+
+---
+
+### Delete Report → Security Model mapping
+
+1. In the **Report → Security Model** table, find the row (report + security model) you want to remove.
+2. Click the **Delete** (trash) button in the **Actions** column. Confirm in the dialog. The mapping is removed.
 
 ---
 
@@ -547,41 +616,142 @@ Security types (e.g. Region, Cost Centre) are linked to security models so the m
 
 ---
 
-## Manage RLS Approvers (for your security models)
+## Approver assignments
 
-1. In the WSO Console, open **Security Models** (or **RLS Approvers** / **Approver assignment**).
-2. Select a **Security model** and open **RLS Approvers** (or the equivalent).
-3. Add, edit, or remove **RLS approvers** according to your workspace’s security types and dimensions. Save.
+**Approver assignments** is where you view and manage who approves access requests: **OLS** (object-level: apps, audiences, standalone reports) and **RLS** (row-level: security dimensions). Open it from the WSO Console menu (**Approver assignments** or the equivalent).
 
-![RLS Approvers – assign approvers to security model](screenshots/wso-rls-approvers-assignment.png)
+You’ll see **two tabs**:
 
-**Why it matters:** RLS (row-level security) requests need the right approvers per security type/dimension. Defining them here ensures requests are routed correctly.
+- **Object-level security (OLS) approvers** — Who approves access to an entire app, audience, or SAR report. You set OLS approvers when you [add or edit an app](#add-app) (App Based) or [add or edit an audience](#add-audience). Here you **view** them and **Reassign** if needed.
+- **Row-level security (RLS) approvers** — Who approves access to a specific **security dimension** (e.g. Region, Cost Centre). You **assign** or **reassign** RLS approvers here so that requests for that dimension are routed to the right person.
 
-> **Coming soon:** Some workspaces use dimension-based wizards (e.g. GI, EMEA, AMER). Full step-by-step for those flows will be added when available.
+Use **Filter by workspace** at the top to limit the list to one workspace.
+
+![Approver assignments – OLS and RLS tabs](screenshots/64_approver_assignments.png)
 
 ---
 
-## View and revoke requests in your workspace
+### OLS approvers tab
 
-### View all requests
+**What you see:** A table of all OLS approvers: **Object type** (App, Audience, or Standalone report), **Object name**, **Parent app**, **OLS approver** (name and email), **Last modified**, and **Actions** (**Reassign**).
 
-1. In the WSO Console, select your workspace and open **Requests** (or **Access requests**).
-2. You will see all requests created under this workspace. Use filters if available (status, date, requester).
-3. Click a request to see **details**, **history**, and **chain status**.
+**What you can do:**
 
-![Workspace requests list](screenshots/wso-requests-list.png)
+- **Search** by object name, approver name, or email.
+- **Filter** by object type: All, Apps, Audiences, or Standalone reports.
+- **Reassign** — Click **Reassign** on a row to change the OLS approver for that app, audience, or report. Enter the new approver email and save.
 
-**Why it matters:** As a workspace admin you can monitor and follow up on all access requests in your scope.
+OLS approvers are first set when you create or edit an **App** (App Based) or an **Audience**; this tab is for viewing and changing them in one place.
 
-### Revoke an access request
+---
 
-1. In **Requests**, find the request you want to revoke.
-2. Open the request and click **Revoke** (or use a revoke action from the list). Confirm.
-3. The request is revoked and access can be removed according to your organisation’s process.
+### RLS approvers tab — list and filters
+
+**What you see:** A table of **security dimensions** and their RLS approvers: **Security model**, **Dimension** (summary), **Approvers** (emails or “No approver assigned”), **Last modified**, and **Actions** (**Assign** or **Reassign**).
+
+**What you can do:**
+
+- Click **Assign RLS Approver** to add an approver to a dimension (see next section).
+- **Search** by security model, dimension, or approver.
+- **Filter** by: **All**, **With Approver**, or **Without Approver** (to find dimensions that still need an approver).
+- **Assign** — For a row with “No approver assigned”, click **Assign** to open the assign flow.
+- **Reassign** — For a row that already has an approver, click **Reassign** to change the approver.
+
+![RLS approvers list](screenshots/65_rls_approver_assignment_list.png)
+
+---
+
+### Assign RLS Approver — step-by-step
+
+To assign an RLS approver to a security dimension:
+
+1. **Open the assign form** — In the **RLS approvers** tab, click **Assign RLS Approver**. A modal opens: “Assign a Row-Level Security (RLS) approver to a security dimension”.
+
+![Assign RLS Approver modal](screenshots/66_assign_rls_Approver.png)
+
+2. **Choose Security Model** — In the dropdown, select the **Security model** (e.g. AMER, CDI). This loads the security types for that model.
+
+![Select security model](screenshots/67_assign_rls_approver_select_security_model.png)
+
+3. **Choose Security Type** — Select the **Security type** (e.g. Region, Cost Centre). This loads the **Dimension combination** options.
+
+![Select security type](screenshots/68_assign_rls_approver_select_security_type.png)
+
+4. **Choose the dimension combination** — You can either:
+   - **Simple (no wizard):** Leave **“Use Step-by-Step Wizard”** unchecked and pick the dimension value(s) from the list or dropdowns shown.
+   - **Wizard:** Check **“Use Step-by-Step Wizard”** and follow the steps (e.g. Org → Market → Client → Service Line) until the dimension is fully selected.
+
+![Simple way – uncheck wizard](screenshots/69_way_simple_uncheck_wizard_checkbox.png)
+
+![Select entity / dimension](screenshots/70_assign_rls_select_entity.png)
+
+For workspace types that use multiple levels (e.g. Market, Org, Client, Service Line), the wizard guides you step by step:
+
+![Select entity – market / org based](screenshots/71_assign_rls_select_entity_market_org_based.png)
+
+![Dimension ready – all selections made](screenshots/72_assign_rls_select_entity_market_org_based_client_all_service_line_sel_dimension_ready.png)
+
+5. **Enter the approver** — In **RLS Approver**, enter the **approver email** (required). Optionally add a **Reason** (e.g. “Region owner for EMEA”). The **Assign Approver** button becomes active when the dimension and approver are valid.
+
+![Ready to assign – dimension and approver filled](screenshots/73_rls_assign_approver_ready_with_dimension.png)
+
+6. **Save** — Click **Assign Approver**. The modal closes and the new approver appears on that dimension in the RLS table. Requests for that dimension will be routed to this approver.
+
+**Why it matters:** RLS requests are approved per **security dimension** (e.g. a specific region or cost centre). Assigning the right RLS approver here ensures each dimension has an owner who can approve or reject access requests.
+
+---
+
+## Permission requests
+
+**Permission requests** are access requests created by users in your workspace. As a workspace admin you can **view** the list, **open a request** to see OLS and RLS details, and **revoke** a request when access should be taken back. Open **Permission requests** from the WSO Console menu.
+
+---
+
+### List permission requests
+
+1. **Filter by workspace** — At the top, select the workspace so only that workspace’s requests are shown.
+2. **Search** — Use the search box to filter by **Request ID**, **Requested by**, or **Requested for**.
+3. **Filter by status** — Use the dropdowns to filter by **OLS status**, **RLS status**, and **Request status** (e.g. Pending, Approved, Rejected). Choose **All** to clear a filter.
+4. **Refresh** — Click **Refresh** to reload the list from the server.
+
+The **table** shows one row per request: **Request ID**, **Requested by**, **Requested for**, **OLS status**, **RLS status**, and **Request status**. Column headers are clickable to **sort**. The count line shows how many requests are listed (e.g. “X of Y total”). Use **Previous** / **Next** or page numbers if the list is paginated.
+
+![Permission requests list](screenshots/75_permission_Request_list.png)
+
+**Why it matters:** You can quickly find requests by ID, requester, or status and see at a glance whether OLS and RLS are pending or approved.
+
+---
+
+### View request details (OLS and RLS)
+
+1. In the **Permission requests** table, **click a row**. A details modal opens for that request.
+2. The modal shows **request information**: Request ID, Requested by, Requested for, OLS status, RLS status, Request status.
+3. Below that you see **OLS items** (object-level: app, audience, or report access) and **RLS items** (row-level: security model and dimension). Each item shows what was requested and its approval state.
+4. If your organisation supports it, you may see **Revoke** or other actions in the modal. Close the modal when done.
+
+**OLS details** — Object-level security items (e.g. access to an app or audience):
+
+![Permission request details – OLS items](screenshots/76_permission_Request_details_only_ols.png)
+
+**RLS details** — Row-level security items (e.g. access to a security model/dimension):
+
+![Permission request details – RLS items](screenshots/75_permission_Request_details_only_rls.png)
+
+**Why it matters:** Seeing OLS and RLS details helps you understand what access was requested and how it was approved (or pending), so you can answer questions or revoke if needed.
+
+---
+
+### Revoke a permission request
+
+When a user should no longer have the access that was granted (e.g. role change or leave), you can **revoke** the request.
+
+1. **Find the request** — In the Permission requests list, use search or filters to find the request (or open it from the list and use **Revoke** in the details view if available).
+2. **Open the request** — Click the row to open the details modal.
+3. **Revoke** — Click **Revoke** (or the equivalent button in the modal or list). Confirm in the dialog. The request is revoked and access can be removed according to your organisation’s process.
 
 ![Revoke request confirmation](screenshots/wso-revoke-request.png)
 
-**Why it matters:** Revoking is used when access should be taken back (e.g. role change or leave).
+**Why it matters:** Revoking removes or flags the granted access so it can be taken back by your organisation’s process.
 
 ---
 
