@@ -129,11 +129,13 @@ The **table** shows one row per app with: **App code**, **App name**, **App owne
 To see full details of an app without editing:
 
 1. In the **Apps** tab, find the app and open the **Actions** menu (⋮).
-2. Click **View Details**. A panel or page opens with the app’s details.
 ![Actions menu (⋮) on an app row](screenshots/12_action_app_menu.png)
 
+2. Click **View Details**. A panel or page opens with the app’s details.
 
 
+
+![View Details – app details panel or page](screenshots/13_view_details_app.png)
 
 ### Edit app
 
