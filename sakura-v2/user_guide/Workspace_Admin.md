@@ -319,6 +319,8 @@ The **table** shows: **Report Name**, **Report Code**, **Audience Name**, **App 
 
 ![Report → Audience mappings list](screenshots/50_list_reports_to_audience_mappings.png)
 
+*Screen: Mappings tab with Report → Audience selected — table of report–audience links, Search, and Add Mapping button.*
+
 ---
 
 ### Add Report → Audience mapping
@@ -331,15 +333,27 @@ The **table** shows: **Report Name**, **Report Code**, **Audience Name**, **App 
 
 ![Add Mapping – Report to Audience](screenshots/51_report_to aud_add.png)
 
+*Screen: Add Mapping modal opened — first step to link reports to an audience.*
+
 ![Add Mapping – select application](screenshots/52_report_to aud_add_select_application.png)
+
+*Screen: Application (App) dropdown — choose the Audience Based app that owns the audience.*
 
 ![Add Mapping – select audience](screenshots/53_report_to aud_add_select_audience.png)
 
+*Screen: Audience dropdown — choose the audience to link reports to (filtered by the app you selected).*
+
 ![Add Mapping – select populated reports](screenshots/54_report_to aud_add_select_populated_reports.png)
+
+*Screen: List of reports — select one or more AUR reports to link to the chosen audience.*
 
 ![Apply mapping](screenshots/54_report_to aud_apply_mapping.png)
 
+*Screen: Apply or Save control — confirm the mapping after selecting app, audience, and reports.*
+
 ![Apply mapping success](screenshots/55_report_to aud_apply_mapping_success.png)
+
+*Screen: Success message after the report–audience mapping is created.*
 
 **Why it matters:** Linking a report to an audience gives everyone in that audience access to the report (AUR). Without a mapping, the report is not available to that audience. SAR (single-access) reports use approvers instead and are not linked to audiences here.
 
@@ -352,9 +366,15 @@ The **table** shows: **Report Name**, **Report Code**, **Audience Name**, **App 
 
 ![Delete mapping – button](screenshots/56_report_to aud_delete_mapping.png)
 
+*Screen: Delete (trash) button in the Actions column for a report–audience row.*
+
 ![Delete mapping – confirmation question](screenshots/57_report_to aud_delete_mapping_question.png)
 
+*Screen: Confirmation dialog asking you to confirm removal of the mapping.*
+
 ![Delete mapping – success message](screenshots/58_report_to aud_delete_mapping_sucess_message.png)
+
+*Screen: Success message after the mapping is deleted.*
 
 ---
 
@@ -555,6 +575,8 @@ The **table** shows: **Report Name**, **Report Code**, **Security Model Name**, 
 
 ![Report → Security Model mappings list](screenshots/59_list_report_to_security_model.png)
 
+*Screen: Mappings tab with Report → Security Model selected — table of report–security model links, Search, and Add Mapping button.*
+
 ---
 
 ### Add Report → Security Model mapping
@@ -566,15 +588,25 @@ The **table** shows: **Report Name**, **Report Code**, **Security Model Name**, 
 
 ![Add Mapping – Report to Security Model](screenshots/60_report_to_sec_model_map_add.png)
 
+*Screen: Add Mapping modal opened — first step to link reports to a security model.*
+
 ![Add Mapping – select security model](screenshots/61_report_to_sec_model_map_select_model.png)
+
+*Screen: Security model dropdown — choose the model to link reports to.*
 
 ![Add Mapping – model selected, reports populated](screenshots/62_report_to_sec_model_map_model_selected_populated.png)
 
+*Screen: List of reports — select one or more reports to link to the chosen security model.*
+
 ![Apply mapping](screenshots/63_report_to_sec_model_map_apply.png)
+
+*Screen: Apply or Save control — confirm the report–security model mapping.*
 
 ![Apply mapping success](screenshots/63_report_to_sec_model_map_success.png)
 
-**Why it matters:** Linking a report to a security model tells the system which RLS dimensions and approvers apply when users request access to that report. RLS approvers are assigned per security model/type in the **Manage RLS Approvers** area.
+*Screen: Success message after the mapping is created.*
+
+**Why it matters:** Linking a report to a security model tells the system which RLS dimensions and approvers apply when users request access to that report. RLS approvers are assigned per security model/type in the **Approver assignments** area.
 
 ---
 
