@@ -202,7 +202,7 @@ You will see:
 
 The **table** shows one row per audience with: **Audience name**, **Audience code**, **Parent app**, **OLS approvers**, **Status**, **Last modified**, and **Actions** (⋮). In the **Actions** menu you can **View Details**, **Edit Audience Details**, **Update OLS Approvers**, toggle **Active/Inactive**, or **Delete Audience**. The header shows how many audiences are listed (e.g. “Showing X of Y total”).
 
-![Audiences tab – search, Active only toggle, Refresh, Add new audience, and audiences table](screenshots/wso-audiences-list-add.png)
+![Audiences tab – search, Active only, Refresh, Add new audience, and table](screenshots/20_list_audiences.png)
 
 ---
 
@@ -211,7 +211,7 @@ The **table** shows one row per audience with: **Audience name**, **Audience cod
 1. In the WSO Console, select your workspace and open the **Audiences** tab.
 2. Click **Add new audience**.
 
-![Add new audience button on the Audiences tab](screenshots/wso-audience-add-btn.png)
+![Add new audience button on the Audiences tab](screenshots/21_add_audience_btn.png)
 
 3. Fill in the form:
 
@@ -223,14 +223,13 @@ The **table** shows one row per audience with: **Audience name**, **Audience cod
    | **OLS approver** | One or more approver email addresses (up to 10). Required. These users approve access requests for this audience. |
    | **Entra Group ID** | Optional. Azure AD/Entra ID group UID to link this audience to an Entra security group. |
 
-![Add new audience form – name, workspace, app, OLS approver, Entra Group ID](screenshots/wso-audience-add-form.png)
+![Add audience form – name, workspace, app, OLS approver, Entra Group ID](screenshots/22_add_audience_form.png)
+
+![Filled add audience form with sample values](screenshots/23_filled_audience_form.png)
 
 4. Click **Add new audience**. A success message appears and the audience is added to the list.
-5. Check the list; if the new audience does not appear, turn **Active only** off to include inactive audiences.
 
-![Success message after adding an audience](screenshots/wso-audience-success.png)
-
-![Audiences list showing the newly added audience](screenshots/wso-audience-newly-added.png)
+![Success message after adding an audience](screenshots/24_success_audience.png)
 
 **Why it matters:** Each audience represents a group of users who get access to the reports you link to it. **OLS approvers** receive and act on access requests for this audience. **Entra Group ID** lets Sakura sync with your Entra group when configured.
 
@@ -243,9 +242,9 @@ To see full details of an audience without editing:
 1. In the **Audiences** tab, find the audience and open the **Actions** menu (⋮).
 2. Click **View Details**. A panel or modal opens with the audience’s details (code, name, app, OLS approvers, status, Entra Group ID, etc.).
 
-![Actions menu (⋮) on an audience row](screenshots/wso-audience-actions-menu.png)
+![Actions menu (⋮) on an audience row](screenshots/25_audience_actions_menu.png)
 
-![View Details – audience details panel or modal](screenshots/wso-audience-view-details.png)
+![View Details – audience details panel or modal](screenshots/26_audience_view_details.png)
 
 ---
 
@@ -256,9 +255,9 @@ To see full details of an audience without editing:
 3. Update **Audience name**, **OLS approver**, or **Entra Group ID** as needed.
 4. Click **Update audience**. A success message confirms the update.
 
-![Edit Audience Details – form with current values](screenshots/wso-audience-edit-form.png)
+![Edit audience – open Actions and choose Edit Audience Details](screenshots/27_audience_edit.png)
 
-![Update success message after editing an audience](screenshots/wso-audience-update-success.png)
+![Update audience success message](screenshots/28_audience_update_success.png)
 
 **Why it matters:** Keeping audience name and approvers correct ensures the right people approve requests and users see the right labels.
 
@@ -272,7 +271,7 @@ To change only the approvers for an audience (without editing other fields):
 2. Click **Update OLS Approvers**. A dialog or form opens with the current approver emails.
 3. Add, remove, or change email addresses. Save. Approvers receive access requests for this audience.
 
-![Update OLS Approvers – dialog or form with approver emails](screenshots/wso-audience-update-approvers.png)
+![Update OLS Approvers – dialog or form](screenshots/29_audience_update_approvers.png)
 
 ---
 
@@ -283,7 +282,7 @@ Audiences have an **Active/Inactive** status. Inactive audiences do not appear f
 1. In the **Audiences** tab, find the audience and open the **Actions** menu (⋮).
 2. Use the **Active/Inactive** toggle in the menu. When you turn it off, the audience becomes **Inactive**; turn it on to make it **Active** again. No separate confirmation dialog—the status updates immediately.
 
-![Actions menu with Active/Inactive toggle for an audience](screenshots/wso-audience-actions-toggle.png)
+![Audience Actions menu – Active/Inactive toggle](screenshots/30_audience_activate_deactivate.png)
 
 **Why it matters:** Deactivating hides the audience from new requests while keeping history. Activating restores it without recreating it.
 
@@ -296,7 +295,7 @@ Removing an audience is permanent. Ensure no critical report–audience mappings
 1. In the **Audiences** tab, find the audience and open the **Actions** menu (⋮).
 2. Click **Delete Audience**. Confirm in the dialog. The audience is removed from the workspace.
 
-![Delete Audience – confirmation dialog](screenshots/wso-audience-delete-confirm.png)
+![Audience Actions menu – Delete Audience](screenshots/31_audience_delete.png)
 
 **Why it matters:** Delete only when the audience is no longer needed. Consider deactivating instead if you may need it again.
 
@@ -308,13 +307,10 @@ AUR (Audience) reports are delivered to users who belong to an audience. You lin
 
 1. In the WSO Console, select your workspace and open the **Mappings** tab.
 2. Select the **Report → Audience** mapping type (first button). You see a table of existing report–audience mappings and an **Add Mapping** button.
-
-![Mappings tab – Report → Audience type selected and mappings table](screenshots/wso-audience-associate-reports.png)
-
 3. Click **Add Mapping**. Choose the **App**, then the **Audience** (only audiences for that app are shown). Select one or more **Reports** (AUR reports) to link to that audience. Save or confirm.
 4. To remove a link: find the mapping in the table, open **Actions**, and delete the mapping. Confirm.
 
-![Add Mapping – choose App, Audience, and Reports to link](screenshots/wso-audience-add-mapping.png)
+![Mappings tab – Report → Audience and Add Mapping](screenshots/32_mappings_report_audience.png)
 
 **Why it matters:** Linking a report to an audience gives everyone in that audience access to the report (AUR). Without a mapping, the report is not available to that audience. SAR (single-access) reports are not linked to audiences; they use report-level approvers instead.
 
