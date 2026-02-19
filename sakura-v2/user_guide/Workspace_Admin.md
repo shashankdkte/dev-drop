@@ -14,8 +14,9 @@ This guide is for **Workspace Admins** (WSO): users who manage a workspace’s a
 | [Manage Audiences](#manage-audiences-for-audience-based-apps) | Add audiences for audience-based apps |
 | [Associate reports with audience (AUR)](#associate-reports-with-an-audience-aur-only) | Link AUR reports to audiences |
 | [Manage Reports](#manage-reports-in-the-workspace) | Add/edit reports, set AUR vs SAR and approvers |
-| [Manage Security Models](#manage-security-models-in-the-workspace) | Add and maintain security models |
-| [Link reports to Security Models](#link-reports-to-security-models) | Assign which models a report uses |
+| [Manage Security Models](#manage-security-models-in-the-workspace) | List, add, edit, activate/deactivate security models |
+| [Link reports to Security Models](#link-reports-to-security-models-report--security-model) | Assign which security models a report uses (Mappings tab) |
+| [Map Security Model to Security Type](#map-security-model-to-security-type-security-model--type) | Link security types to models (Mappings tab) |
 | [Manage RLS Approvers](#manage-rls-approvers-for-your-security-models) | Assign RLS approvers to security models |
 | [View and revoke requests](#view-and-revoke-requests-in-your-workspace) | See and revoke workspace requests |
 | [View user's security context](#view-a-users-security-context-in-the-workspace) | Check a user’s access in the workspace |
@@ -257,8 +258,6 @@ To see full details of an audience without editing:
 
 ![Edit audience – open Actions and choose Edit Audience Details](screenshots/24_action_audience_menu.png)
 
-![Edit audience – open Actions and choose Edit Audience Details](screenshots/30_edit_audience.png)
-
 ![Update audience success message](screenshots/25_success_audience.png)
 
 **Why it matters:** Keeping audience name and approvers correct ensures the right people approve requests and users see the right labels.
@@ -397,7 +396,7 @@ To see full details of a report without editing:
 2. Click **Edit Report Details**. The form opens with the current values. **Report code** cannot be changed.
 3. Update **Report name**, **Report tag**, **Report owner**, **Delivery method**, **Approvers** (for SAR), **Description**, or **Keywords** as needed.
 4. Click **Save Changes**. A success message confirms the update.
-![Update Approvers – SAR report](screenshots/38_edit_report.png)
+
 **Why it matters:** Keeping report details and approvers correct ensures the right people approve SAR requests and users see accurate names and tags.
 
 ---
@@ -440,25 +439,111 @@ Removing a report is permanent. Ensure no critical mappings or access depend on 
 
 ## Manage Security Models in the workspace
 
-1. In the WSO Console, select your workspace and open **Security Models** (or **Security models**).
-2. Click **Add security model**. Enter **code**, **name**, and any required fields (e.g. type). Save.
-3. To edit or deactivate a security model, use **Edit** or **Deactivate** on that row.
-
-![Security Models list and Add form](screenshots/wso-security-models-list-add.png)
-
-**Why it matters:** Security models define the security dimensions used in the workspace. Reports are linked to security models so the system knows which model applies to each report.
+Security models define the row-level security (RLS) dimensions used in your workspace. Each model has a **name**, **code**, and **security types** (mapped to the model). Reports are linked to security models in the **Mappings** tab (Report → Security Model); security types are linked to models when you add a model or in **Mappings** (Security Model → Type). This section covers the **Security Models** area: list, add, view, edit, activate/deactivate, and delete.
 
 ---
 
-## Link reports to Security Models
+### List security models
 
-1. In the WSO Console, go to **Reports** and select a **report** (or open the report’s **Security models** section).
-2. Add or remove **Security models** that this report uses. Save.
-3. Repeat for other reports as needed.
+1. In the WSO Console, open **Security Models** (from the main WSO menu or console).
+2. Use **Filter by workspace** to restrict to one workspace.
+3. You will see **Search** (by name, code, or description), **Active only** / **Show all** toggle, **Refresh**, and **Add security model**.
+
+The **table** shows: **Model name**, **Code**, **Security types** (badges), **Dimensions**, **Status**, **Last modified**, and **Actions** (⋮). In the **Actions** menu you can **View Details**, **Edit Model Details**, toggle **Active/Inactive**, or **Delete Model**.
+
+![Security Models list – filter, search, Active only, Refresh, Add security model, table](screenshots/39_security_models.png)
+
+---
+
+### Add security model
+
+1. In **Security Models**, click **Add security model**.
+2. Fill in **Model name** and **Workspace** (required). Model name cannot be changed after creation.
+3. In **Security type mapping**, select one or more **Security types** (checkboxes; use the search to filter). At least one security type is required. These link the model to the types used for RLS dimensions.
+4. Click **Add** or **Save**. A success message appears and the model is listed with its security types.
+
+![Add new security model with security type selection](screenshots/40_add_new_security_model_with_type.png)
+
+![Success after security model creation](screenshots/41_success_security_model_creation.png)
+
+**Why it matters:** Security models group security types that apply to reports. Linking types at creation (or in Mappings) defines which dimensions the model uses for RLS approval routing.
+
+---
+
+### View Details
+
+1. In the **Security Models** table, find the model and open the **Actions** menu (⋮), or click the model name.
+2. Click **View Details**. A panel or modal opens with the model’s details (name, code, workspace, security types, dimensions, status).
+
+---
+
+### Edit security model
+
+1. In the **Security Models** table, find the model and open the **Actions** menu (⋮).
+2. Click **Edit Model Details**. The form opens; **Model name** and **Workspace** cannot be changed. Update **Security types** (add or remove) as needed.
+3. Save. A success message confirms the update.
+
+---
+
+### Activate or deactivate a security model
+
+1. In the **Security Models** table, find the model and open the **Actions** menu (⋮).
+2. Use the **Active/Inactive** toggle. When off, the model is **Inactive**; turn it on to make it **Active** again.
+
+**Why it matters:** Inactive models are hidden from new report mappings and RLS flows; activating restores them.
+
+---
+
+### Delete security model
+
+1. In the **Security Models** table, find the model and open the **Actions** menu (⋮).
+2. Click **Delete Model**. Confirm in the dialog. The model is removed. Ensure no reports or RLS approvers depend on it before deleting.
+
+---
+
+## Link reports to Security Models (Report → Security Model)
+
+Reports can use one or more **security models** for RLS. You link them in **Object Management → Mappings** tab.
+
+1. In the WSO Console, select your workspace and open **Object management** (or the main object-management view). Open the **Mappings** tab.
+2. Select the **Report → Security Model** mapping type (second button). You see a table of existing report–security model mappings and an **Add Mapping** button.
+3. Click **Add Mapping**. Choose the **Security model**, then select one or more **Reports** to link to that model. Save or confirm.
+4. To remove a link: find the mapping in the table and use **Actions** (or Delete). Confirm.
 
 ![Report – assign security models](screenshots/wso-report-security-model-mapping.png)
 
-**Why it matters:** This tells the app which security model applies when users request access to this report (e.g. for RLS approval routing).
+**Why it matters:** Linking a report to a security model tells the system which RLS dimensions and approvers apply when users request access to that report.
+
+---
+
+## Map Security Model to Security Type (Security Model → Type)
+
+Security types (e.g. Region, Cost Centre) are linked to security models so the model knows which dimensions it uses. You can assign types when **adding a security model** (see [Add security model](#add-security-model)) or later in the **Mappings** tab under **Security Model → Type**.
+
+1. In the WSO Console, select your workspace and open the **Mappings** tab (in Object management).
+2. Select the **Security Model → Type** mapping type (third button). You see a table of existing security model–to–security type mappings and an **Add Mapping** button.
+
+![Mappings tab – Security Model → Type view](screenshots/42_mapping_focusing_security_model_to_type.png)
+
+3. **Add a mapping:** Click **Add Mapping**. Select a **Security model** from the dropdown. The available **Security types** for that model (from the List of Values) are shown; select one or more types to link to the model. Click **Apply** or **Save** to create the mapping(s).
+
+![Add mapping – select security model](screenshots/43_add_mapping_sec_model_to_type_select_model.png)
+
+![Add mapping – selection from dropdown](screenshots/44_add_mapping_sec_model_to_type_selection_from_dropdown.png)
+
+![Add mapping – model selected, types available](screenshots/45_add_mapping_sec_model_to_type_model_selected_types_available.png)
+
+![Apply mapping – Security Model to Type](screenshots/46_apply_mapping_sec_model_to_type_select_model.png)
+
+4. **Remove a mapping:** In the table, find the row (Security Model + Security Type) and click the **Delete** (trash) button. Confirm in the dialog. A success message confirms the removal.
+
+![Delete mapping – button](screenshots/47_delete_mapping_sec_model_to_type_button.png)
+
+![Delete mapping – confirmation question](screenshots/48_delete_mapping_sec_model_to_type_question.png)
+
+![Delete mapping – success message](screenshots/49_delete_mapping_sec_model_to_type_success_message.png)
+
+**Why it matters:** Security model → type mappings define which dimensions (e.g. Region, Cost Centre) each model uses. RLS approvers are then assigned per security type/dimension so requests are routed correctly.
 
 ---
 
@@ -531,8 +616,6 @@ Removing a report is permanent. Ensure no critical mappings or access depend on 
 - **Administrators** create workspaces and manage app-wide settings: see [Administrator guide](Administrator.md).
 
 *Everything you need is in this User Guide; the list in "What you can do as a Workspace Admin" is the full set of workspace capabilities.*
-
-
 
 
 
