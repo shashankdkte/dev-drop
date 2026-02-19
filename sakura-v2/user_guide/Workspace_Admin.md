@@ -149,11 +149,14 @@ Update approver since app based
 
 1. In the **Apps** tab, turn the **Active only** toggle **off** so inactive apps are shown.
 2. If your organisation provides a way to activate a previously deactivated app, use the **Actions** menu (⋮) on that app and choose **Activate** (or the equivalent). Confirm.
+![Apps list showing the newly added app](screenshots/18_activate_app screen_first.png)
 3. The app status becomes **Active** and the app can be used by requesters again.
 
-![Apps list with Active only off – activate or reactivate an app](screenshots/wso-apps-list-actions.png)
+![Apps list with Active only off – activate or reactivate an app](screenshots/19_question_activate.png)
 
 **Why it matters:** Reactivating an app restores it for new access requests without recreating it.
+
+
 
 ### Deactivate app
 
@@ -161,7 +164,7 @@ Update approver since app based
 2. Click **Deactivate App**. Confirm in the dialog.
 3. The app status becomes inactive; it will not appear for new requests but may still apply to existing access depending on your organisation’s rules.
 
-![Apps list – Actions menu with Deactivate App](screenshots/wso-apps-list-actions.png)
+![Apps list – Actions menu with Deactivate App](screenshots/17_deactivate_app.png)
 
 **Why it matters:** Deactivating removes the app from use for new access requests while keeping historical data.
 
@@ -313,6 +316,7 @@ Update approver since app based
 - **Administrators** create workspaces and manage app-wide settings: see [Administrator guide](Administrator.md).
 
 *Everything you need is in this User Guide; the list in "What you can do as a Workspace Admin" is the full set of workspace capabilities.*
+
 
 
 
