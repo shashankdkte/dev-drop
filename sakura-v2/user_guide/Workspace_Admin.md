@@ -257,6 +257,8 @@ To see full details of an audience without editing:
 
 ![Edit audience – open Actions and choose Edit Audience Details](screenshots/24_action_audience_menu.png)
 
+![Edit audience – open Actions and choose Edit Audience Details](screenshots/30_edit_audience.png)
+
 ![Update audience success message](screenshots/25_success_audience.png)
 
 **Why it matters:** Keeping audience name and approvers correct ensures the right people approve requests and users see the right labels.
@@ -529,6 +531,7 @@ Removing a report is permanent. Ensure no critical mappings or access depend on 
 - **Administrators** create workspaces and manage app-wide settings: see [Administrator guide](Administrator.md).
 
 *Everything you need is in this User Guide; the list in "What you can do as a Workspace Admin" is the full set of workspace capabilities.*
+
 
 
 
