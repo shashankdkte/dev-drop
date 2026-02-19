@@ -397,7 +397,7 @@ To see full details of a report without editing:
 2. Click **Edit Report Details**. The form opens with the current values. **Report code** cannot be changed.
 3. Update **Report name**, **Report tag**, **Report owner**, **Delivery method**, **Approvers** (for SAR), **Description**, or **Keywords** as needed.
 4. Click **Save Changes**. A success message confirms the update.
-
+![Update Approvers – SAR report](screenshots/38_edit_report.png)
 **Why it matters:** Keeping report details and approvers correct ensures the right people approve SAR requests and users see accurate names and tags.
 
 ---
@@ -531,6 +531,7 @@ Removing a report is permanent. Ensure no critical mappings or access depend on 
 - **Administrators** create workspaces and manage app-wide settings: see [Administrator guide](Administrator.md).
 
 *Everything you need is in this User Guide; the list in "What you can do as a Workspace Admin" is the full set of workspace capabilities.*
+
 
 
 
