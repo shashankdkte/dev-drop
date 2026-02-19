@@ -69,17 +69,21 @@ Workspaces are created and assigned by **Sakura Administrators**. You only see w
 
 ## Manage Apps in the workspace
 
+This section covers how to list, add, view, edit, activate, and deactivate apps in your workspace.
+
 ### List apps
 
-In the WSO Console, select your workspace and open the **Apps** tab. You see:
+1. In the WSO Console, select your workspace and open the **Apps** tab.
 
-- **Tabs** for Apps, Audiences, Reports, and Mappings (with counts) so you can switch between them.
-- **Search** — search apps by name, code, or owner.
-- **Active only** — a toggle to show only active apps (on) or to include inactive apps (off).
-- **Refresh** — reload the list.
-- **Add new app** — open the form to add an app (see [Add App](#add-app)).
+You will see:
 
-The **apps table** lists each app with: **App code**, **App name**, **App owner**, **Technical owner**, **Approval mode**, **OLS mode**, **Audiences** (count), **Status** (e.g. Active), **Last modified** (date and user), and **Actions** (⋮ menu with **View Details**, **Edit App**, **Deactivate**). The count line shows “Showing X of Y total” (or a range when paginated). Use this list to find an app before editing or deactivating it.
+- **Tabs** — Apps, Audiences, Reports, and Mappings (with counts). Use these to switch between sections.
+- **Search** — Type to filter apps by name, code, or owner.
+- **Active only** — Toggle **on** to show only active apps; turn **off** to include inactive apps.
+- **Refresh** — Reload the list from the server.
+- **Add new app** — Opens the form to add an app (see [Add App](#add-app)).
+
+The **table** shows one row per app with: **App code**, **App name**, **App owner**, **Technical owner**, **Approval workflow**, **OLS mode**, **Audiences** (count), **Status**, **Last modified**, and **Actions** (⋮). In the **Actions** menu you can **View Details**, **Edit App**, or **Deactivate App**. The header shows how many apps are listed (e.g. “Showing 1 of 1 total”).
 
 ![Apps tab – search, Active only toggle, Refresh, Add new app, and apps table](screenshots/04_list_apps.png)
 
@@ -90,19 +94,18 @@ The **apps table** lists each app with: **App code**, **App name**, **App owner*
 
 ![Add new app button on the Apps tab](screenshots/05_add_app_btn.png)
 
-3. In the form, fill in the required fields:
-   - **App code** — uppercase, max 50 characters (e.g. FIN, MKTG, HR). Cannot be changed after save.
-   - **App name** — display name of the app.
-   - **Workspace** — select the workspace (if not already set).
-   - **App owner** — one or two owner email addresses.
-   - **Support contact** — one or two technical owner email addresses.
-   - **OLS Security Mode** — choose one:
-     - **Unmanaged (Power BI manages security)** — Sakura does not manage app-level security.
-     - **Managed (Sakura manages security)** — Sakura manages security; you must provide **App Entra Group UID** (Azure AD / Entra ID group GUID, 36 characters). This links the app to the Entra group for access sync.
-   - **Approval Workflow** — choose one:
-     - **App Based (Single approval for entire app)** — one approval covers the whole app; you can optionally set **OLS approver** emails.
-     - **Audience Based (Separate approvals per audience)** — approvals are per audience; use this for AUR-style access.
-   - **(Optional) Additional Dynamic Questions** — add custom questions that requesters see when requesting access to this app.
+3. Fill in the form:
+
+   | Field | What to enter |
+   |-------|----------------|
+   | **App code** | Uppercase letters and numbers, max 50 characters (e.g. FIN, MKTG, HR). Cannot be changed after you save. |
+   | **App name** | The display name users will see. |
+   | **Workspace** | Select the workspace if not already set. |
+   | **App owner** | One or two owner email addresses. |
+   | **Support contact** | One or two technical owner email addresses. |
+   | **OLS Security Mode** | **Unmanaged** — Power BI manages security; **Managed** — Sakura manages security (you must then enter **App Entra Group UID**, the Azure AD/Entra ID group GUID, 36 characters). |
+   | **Approval Workflow** | **App Based** — one approval for the whole app (you can set **OLS approver** emails); **Audience Based** — separate approvals per audience (for AUR-style access). |
+   | **Additional Dynamic Questions** | Optional. Add custom questions that requesters answer when requesting access. |
 
 ![Add new app form – code, name, workspace, owners, security and approval](screenshots/06_add_new_app_form.png)
 
@@ -112,67 +115,74 @@ The **apps table** lists each app with: **App code**, **App name**, **App owner*
 
 ![Additional Dynamic Questions editor (optional)](screenshots/09_additional_questions.png)
 
-4. Click **Add new app** (or **Update App** when editing). A success message appears and the app is listed in the Apps table.
+4. Click **Add new app**. A success message appears and the app is added to the list.
+5. To see the new app in the list, turn **Active only** off if it does not appear.
 
 ![Success message after adding an app](screenshots/10_success_message_app.png)
 
-5. Confirm the new app in the list (e.g. turn off **Active only** if it does not appear).
-
 ![Apps list showing the newly added app](screenshots/11_newly_added_app.png)
 
-**Why it matters:** Apps are the containers for audiences and reports. **Approval Workflow** determines whether access is by app-level approval (App Based) or by audience (Audience Based / AUR). **OLS Security Mode** and **App Entra Group UID** (when Managed) control how Sakura syncs with Power BI and Entra ID.
+**Why it matters:** Apps are the containers for audiences and reports. **Approval Workflow** controls whether access is approved once per app (App Based) or per audience (Audience Based). **OLS Security Mode** and **App Entra Group UID** (when Managed) control how Sakura syncs with Power BI and Entra ID.
 
 ### View Details
 
-1. open the **Actions** menu (⋮)
-![Apps list showing the newly added app](screenshots/12_action_app_menu.png)
-2.  Click **View Details**.
-   
-![Apps list showing the newly added app](screenshots/13_view_details_app.png)
+To see full details of an app without editing:
+
+1. In the **Apps** tab, find the app and open the **Actions** menu (⋮).
+2. Click **View Details**. A panel or page opens with the app’s details.
+
+![Actions menu (⋮) on an app row](screenshots/12_action_app_menu.png)
+
+![View Details – app details panel or page](screenshots/13_view_details_app.png)
 
 ### Edit app
 
 1. In the **Apps** tab, find the app and open the **Actions** menu (⋮).
-2. Click **Edit App**. The same form opens with existing values; **App code** is read-only.
-![Apps list showing the newly added app](screenshots/14_edit_app.png)
-3. Change **App name**, **App owner**, **Support contact**, **OLS Security Mode**, **App Entra Group UID** (if Managed), **Approval Workflow**, **OLS approver** (if App Based), or **Additional Dynamic Questions**. Click **Update App**.
+2. Click **Edit App**. The add-app form opens with the current values. **App code** cannot be changed.
+3. Update any fields you need (App name, App owner, Support contact, OLS Security Mode, App Entra Group UID, Approval Workflow, or Additional Dynamic Questions). For **App Based** apps you can also change **OLS approver** emails here.
+4. Click **Update App**. A success message confirms the update.
 
-![Apps list showing the newly added app](screenshots/15_update_success_app_message.png)
+![Edit App – open the Actions menu and choose Edit App](screenshots/14_edit_app.png)
 
+![Update success message after editing an app](screenshots/15_update_success_app_message.png)
 
-Update approver since app based 
+![Editing OLS approver for an App Based app](screenshots/16_update_Approver_App_Based.png)
 
-![Apps list showing the newly added app](screenshots/16_update_Approver_App_Based.png)
-**Why it matters:** Keeping app details correct ensures the right approval flow and naming for requesters and approvers.
+**Why it matters:** Keeping app details and approvers correct ensures the right approval flow and contact information for requesters and approvers.
 
 ### Activate app
 
-1. In the **Apps** tab, turn the **Active only** toggle **off** so inactive apps are shown.
-2. If your organisation provides a way to activate a previously deactivated app, use the **Actions** menu (⋮) on that app and choose **Activate** (or the equivalent). Confirm.
-![Apps list showing the newly added app](screenshots/18_activate_app screen_first.png)
-3. The app status becomes **Active** and the app can be used by requesters again.
+To make a previously deactivated app active again:
 
-![Apps list with Active only off – activate or reactivate an app](screenshots/19_question_activate.png)
+1. In the **Apps** tab, turn the **Active only** toggle **off** so that inactive apps appear in the list.
+2. Find the app and open the **Actions** menu (⋮). Choose **Activate** (or the equivalent).
+3. Confirm if a dialog appears. The app status becomes **Active** and requesters can use it again.
 
-**Why it matters:** Reactivating an app restores it for new access requests without recreating it.
+![Activate app – turn Active only off and use Actions menu](screenshots/18_activate_app_screen_first.png)
+
+![Activate confirmation (if shown)](screenshots/19_question_activate.png)
+
+**Why it matters:** Activating an app restores it for new access requests without having to add it again.
 
 
 
 ### Deactivate app
 
+To stop an app from being used for new requests (existing access may still apply, depending on your organisation):
+
 1. In the **Apps** tab, find the app and open the **Actions** menu (⋮).
-2. Click **Deactivate App**. Confirm in the dialog.
-3. The app status becomes inactive; it will not appear for new requests but may still apply to existing access depending on your organisation’s rules.
+2. Click **Deactivate App**.
+3. Confirm in the dialog. The app status becomes inactive and it no longer appears for new access requests.
 
-![Apps list – Actions menu with Deactivate App](screenshots/17_deactivate_app.png)
+![Actions menu with Deactivate App](screenshots/17_deactivate_app.png)
 
-**Why it matters:** Deactivating removes the app from use for new access requests while keeping historical data.
+**Why it matters:** Deactivating hides the app from new requests while keeping history and existing access as defined by your organisation.
 
 ---
 
 ## Manage Audiences (for Audience-based apps)
 
-1. In the WSO Console, select your workspace and open the **Apps** tab, then select an app whose **Approval mode** is **Audience Based**.
+1. In the WSO Console, select your workspace and open the **Apps** tab, then select an app whose **Approval Workflow** is **Audience Based**.
 2. Open the **Audiences** tab for that app.
 3. Click **Add new audience**. Enter **Audience code** and **Audience name** (and any other required fields, e.g. **Audience Entra Group UID**). Click **Add new audience** (or **Update audience** when editing).
 4. To deactivate an audience, open the **Actions** menu (⋮) on that audience and choose **Deactivate** (or the equivalent). Confirm.
@@ -316,6 +326,7 @@ Update approver since app based
 - **Administrators** create workspaces and manage app-wide settings: see [Administrator guide](Administrator.md).
 
 *Everything you need is in this User Guide; the list in "What you can do as a Workspace Admin" is the full set of workspace capabilities.*
+
 
 
 
