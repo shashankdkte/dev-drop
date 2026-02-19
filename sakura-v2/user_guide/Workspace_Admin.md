@@ -130,6 +130,8 @@ To see full details of an app without editing:
 
 1. In the **Apps** tab, find the app and open the **Actions** menu (⋮).
 2. Click **View Details**. A panel or page opens with the app’s details.
+![Actions menu (⋮) on an app row](screenshots/12_action_app_menu.png)
+
 
 
 
@@ -434,6 +436,7 @@ AUR (Audience) reports are delivered to users who belong to an audience. You lin
 - **Administrators** create workspaces and manage app-wide settings: see [Administrator guide](Administrator.md).
 
 *Everything you need is in this User Guide; the list in "What you can do as a Workspace Admin" is the full set of workspace capabilities.*
+
 
 
 
