@@ -332,8 +332,8 @@ sequenceDiagram
 
     U->>FE: Enter reason, Submit
     FE->>Create_API: POST /api/permissions { requestedFor, lmApprover, olsDetails?, rlsDetails?, ... }
-    Note over Create_API: Backend resolves LM (if not sent), OLS and RLS approvers; creates PermissionRequests and PermissionHeaders with Approvers
-    Create_API-->>FE: { id, requestCode, requestStatus }
+    Note over Create_API: Backend resolves LM, OLS and RLS approvers and creates PermissionRequests and PermissionHeaders
+    Create_API-->>FE: id, requestCode, requestStatus
     FE->>U: Success: request created (Pending LM)
 ```
 
