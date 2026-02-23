@@ -299,6 +299,113 @@ flowchart TD
 - **Traversal (only when Entity is in the model):** If no exact match, **keep Client, PA, MSS, etc. unchanged**; traverse **only Entity** upward (Market → Cluster → Region → Global) until an approver row is found. Do **not** traverse Client (e.g. LINKEDIN → DSH/MICROSOFT) or any other dimension (FDD § "Traversing The Approver Tree"; FDD 09 out-of-scope: cross-dimensional traversal is not implemented).
 - Return list of emails (semicolon-separated in DB, split to list in API).
 
+### 6.4 RLS approver resolution per workspace and security type (Mermaid)
+
+Below is one flowchart per workspace. Security types and dimensions are listed; **traversal is only Entity** (Market → Cluster → Region → Global), all other dimensions stay fixed.
+
+---
+
+#### CDI — Security types: Orga, PA, Client, CC, MSS, PC | Table: RLSCDIApprovers | Dimensions: Entity, PA, Client, MSS, PC, CC, SL
+
+```mermaid
+flowchart TD
+    A[Request: CDI, SecurityType, EntityKey, EntityHierarchy, PAKey, PAHierarchy, ClientKey, ClientHierarchy, MSSKey, MSSHierarchy, PCKey, PCHierarchy, CCKey, CCHierarchy, SLKey, SLHierarchy] --> B[RLSCDIApprovers: match SecurityModelId, SecurityTypeLoVId, all dimension keys]
+    B --> C{Exact match?}
+    C -->|Yes| D[Return Approvers]
+    C -->|No| E{Entity in request?}
+    E -->|Yes| F[Keep PA, Client, MSS, PC, CC, SL fixed. Traverse Entity only: Market then Cluster then Region then Global]
+    F --> B
+    E -->|No| G[NOT FOUND]
+```
+
+---
+
+#### AMER — Security types: Orga, PA, Client, CC, MSS, PC | Table: RLSAMERApprovers | Dimensions: Entity, PA, Client, MSS, PC, CC, SL
+
+```mermaid
+flowchart TD
+    A[Request: AMER, SecurityType, EntityKey, EntityHierarchy, PAKey, ClientKey, MSSKey, PCKey, CCKey, SLKey and hierarchies] --> B[RLSAMERApprovers: match SecurityModelId, SecurityTypeLoVId, all dimension keys]
+    B --> C{Exact match?}
+    C -->|Yes| D[Return Approvers]
+    C -->|No| E{Entity in request?}
+    E -->|Yes| F[Keep PA, Client, MSS, PC, CC, SL fixed. Traverse Entity only: Market then Cluster then Region then Global]
+    F --> B
+    E -->|No| G[NOT FOUND]
+```
+
+---
+
+#### WFI — Security type: WFI | Table: RLSWFIApprovers | Dimensions: Entity, PA only
+
+```mermaid
+flowchart TD
+    A[Request: WFI, SecurityType WFI, EntityKey, EntityHierarchy, PAKey, PAHierarchy] --> B[RLSWFIApprovers: match SecurityModelId, SecurityTypeLoVId, Entity and PA keys]
+    B --> C{Exact match?}
+    C -->|Yes| D[Return Approvers]
+    C -->|No| E{Entity in request?}
+    E -->|Yes| F[Keep PA fixed. Traverse Entity only: Market then Cluster then Region then Global]
+    F --> B
+    E -->|No| G[NOT FOUND]
+```
+
+---
+
+#### GI — Security type: GI | Table: RLSGIApprovers | Dimensions: Entity, Client, MSS, SL
+
+```mermaid
+flowchart TD
+    A[Request: GI, SecurityType GI, EntityKey, EntityHierarchy, ClientKey, ClientHierarchy, MSSKey, MSSHierarchy, SLKey, SLHierarchy] --> B[RLSGIApprovers: match SecurityModelId, SecurityTypeLoVId, all dimension keys]
+    B --> C{Exact match?}
+    C -->|Yes| D[Return Approvers]
+    C -->|No| E{Entity in request?}
+    E -->|Yes| F[Keep Client, MSS, SL fixed. Traverse Entity only: Market then Cluster then Region then Global]
+    F --> B
+    E -->|No| G[NOT FOUND]
+```
+
+---
+
+#### DFI (FUM) — Security type: FUM | Table: RLSFUMApprovers | Dimensions: Entity, Country, Client, MSS, PC
+
+```mermaid
+flowchart TD
+    A[Request: DFI, SecurityType FUM, EntityKey, EntityHierarchy, CountryKey, CountryHierarchy, ClientKey, ClientHierarchy, MSSKey, MSSHierarchy, PCKey, PCHierarchy] --> B[RLSFUMApprovers: match SecurityModelId, SecurityTypeLoVId, all dimension keys]
+    B --> C{Exact match?}
+    C -->|Yes| D[Return Approvers]
+    C -->|No| E{Entity in request?}
+    E -->|Yes| F[Keep Country, Client, MSS, PC fixed. Traverse Entity only: Market then Cluster then Region then Global]
+    F --> B
+    E -->|No| G[NOT FOUND]
+```
+
+---
+
+#### EMEA — Security types: Orga, Country, Client, CC, MSS | Table: RLSEMEAApprovers | Dimensions: Entity, Country, Client, CC, MSS, SL
+
+```mermaid
+flowchart TD
+    A[Request: EMEA, SecurityType, EntityKey, EntityHierarchy, CountryKey, CountryHierarchy, ClientKey, CCKey, MSSKey, SLKey and hierarchies] --> B[RLSEMEAApprovers: match SecurityModelId, SecurityTypeLoVId, all dimension keys]
+    B --> C{Exact match?}
+    C -->|Yes| D[Return Approvers]
+    C -->|No| E{Entity in request?}
+    E -->|Yes| F[Keep Country, Client, CC, MSS, SL fixed. Traverse Entity only: Market then Cluster then Region then Global]
+    F --> B
+    E -->|No| G[NOT FOUND]
+```
+
+---
+
+**Summary table**
+
+| Workspace | Table | Security types | Dimensions (fixed in combination when traversing Entity) |
+|-----------|-------|----------------|----------------------------------------------------------|
+| CDI | RLSCDIApprovers | Orga, PA, Client, CC, MSS, PC | Entity, PA, Client, MSS, PC, CC, SL |
+| AMER | RLSAMERApprovers | Orga, PA, Client, CC, MSS, PC | Entity, PA, Client, MSS, PC, CC, SL |
+| WFI | RLSWFIApprovers | WFI | Entity, PA |
+| GI | RLSGIApprovers | GI | Entity, Client, MSS, SL |
+| DFI | RLSFUMApprovers | FUM | Entity, Country, Client, MSS, PC |
+| EMEA | RLSEMEAApprovers | Orga, Country, Client, CC, MSS | Entity, Country, Client, CC, MSS, SL |
+
 ---
 
 ## 7. End-to-End Flow: Data Entry Create Request (Optimum)
