@@ -1,162 +1,156 @@
-# Approver Resolution — Robustness: False Positives, False Negatives, and Test Examples
+# OLS & RLS Approver Logic — Robustness Issues (False Positives / True Negatives)
 
-**Purpose:** Will the approval-find logic in `logic_fin_Appro.md` work **100% of the time** at the backend/DB level (no false approvers, no missed approvers)?  
-**Short answer:** **No** — not unless the backend implements traversal correctly, handles multi-match priority, and uses the right OLS path. This doc lists **when** it can fail and gives **concrete examples** (using Script_Populate data) so you can test robustness.
-
----
-
-## 1. Definitions
-
-| Term | Meaning | Risk |
-|------|--------|------|
-| **False positive** | System returns an approver who should **not** approve this request | Wrong person gets approval task |
-| **False negative** | System returns **no** approver (or wrong one) when a **valid** approver exists | Request stuck, or wrong approver used |
+This document cross-checks **Sakura_DB** schema and **new_logic/logic_fin_Appro.md** to flag issues that can cause **false positives** (wrong approvers returned) or **true negatives** (no approver when one exists). The logic file was **not** modified; this only points out gaps.
 
 ---
 
-## 2. RLS — When It Can Fail
+## 1. OLS — Issues
 
-### 2.1 FALSE NEGATIVE: Backend skips Entity traversal
+### 1.1 **CRITICAL: ReportDeliveryMethod value for SAR is wrong in the logic doc**
 
-**Logic doc:** Organisation hierarchy = Market → Cluster → Region → Global. Must try each level until a row matches.
+| Source | SAR value | AUR value |
+|--------|-----------|-----------|
+| **Sakura_DB** `dbo.WorkspaceReports` | **1** (comment: "1: SAR - Standalone Reports") | **0** (comment: "0: AUR - Audience Reports") |
+| **logic_fin_Appro.md** | **0** (doc says "ReportDeliveryMethod = SAR (0)") | — |
 
-**If backend only does one exact lookup** (e.g. only Market) and does **not** retry at Cluster/Region/Global:
+**Impact:**  
+If the backend implements the doc literally (SAR = 0), it will treat **AUR** reports as standalone and use `WorkspaceReports.Approvers` for them, and **SAR** reports as audience and look at App/Audience instead.
 
-- **Example (Script_Populate 1-AMER):**
-  - Request: AMER-ORGA, **Argentina**, **Market**, SL=Overall, Client=empty.
-  - DB has: Argentina/Market/Overall (Desiree.Benson@dentsu.com) → **exact match**, OK.
-  - Request: AMER-ORGA, **Vancouver**, **Market**, SL=Overall (Vancouver not in 1-AMER as Market).
-  - DB has: North America/Cluster/Overall (Desiree.Benson@dentsu.com).
-  - **Backend does only Market lookup** → no row → returns **null**.
-  - **Correct behaviour:** Try Cluster (e.g. North America) → match → return Desiree.Benson@dentsu.com.
-  - **Result:** **False negative** — real approver exists but system says “no approver”.
+- **False positive:** Returning report-level approvers for an AUR report (where approvers should come from App/Audience).
+- **True negative:** For a SAR report, not using `WorkspaceReports.Approvers` and falling back to Workspace or wrong source.
 
-**How to test:** Use `Test_Approver_Resolution_At_DB.sql` section 5 “Traversal simulation”: run the same RLS lookup with EntityKey/EntityHierarchy = (Canada, Market), then (North America, Cluster), then (Americas, Region). Backend must do these in order and stop at first hit.
+**Reference:**  
+- `Sakura_DB/Dbo/Tables/WorkspaceReports.sql`: `ReportDeliveryMethod INT NOT NULL, /*0: AUR - Audience Reports, 1: SAR - Standalone Reports*/`
+- All `Sakura_DB/Share/Views/OLS/*.OLS.sql`: `WR.ReportDeliveryMethod = 1 -- Standalone Report (SAR)`
+- `Script_Populate/Test_Approver_Resolution_At_DB.sql`: "ReportDeliveryMethod = 1" for SAR.
 
----
-
-### 2.2 FALSE NEGATIVE: Wrong SecurityModelId / SecurityTypeLoVId
-
-**Logic doc:** Step 1 filter by SecurityModelId and SecurityTypeLoVId. If backend sends the wrong Id (e.g. from wrong workspace or wrong LoV), no rows match.
-
-- **Example (1-AMER):**
-  - Request is for **AMER** workspace but backend sends SecurityTypeLoVId for **CDI** (or wrong SecurityModelId).
-  - RLSAMERApprovers has only AMER-Default + AMER-ORGA/AMER-Client rows → filter removes all.
-  - **Result:** **False negative** — approver exists for AMER, but null returned.
-
-**How to test:** In `Test_Approver_Resolution_At_DB.sql` section 3a, temporarily use a SecurityModelCode or LoVValue that does not exist in RLSAMERApprovers; expect no row. Then fix to correct workspace/LoV and confirm one row.
+**Recommendation:** In logic_fin_Appro.md (or backend), define: **SAR = 1**, **AUR = 0**, and use that consistently.
 
 ---
 
-### 2.3 FALSE POSITIVE / FALSE NEGATIVE: Multiple matching rows (client-specific vs wildcard)
+### 1.2 **“If present” for Approvers — NULL vs empty string**
 
-**Logic doc:** “Your logic does NOT prioritize client-specific over wildcard.” So when both a row with ClientKey=Nike and a row with ClientKey=NULL match, “first valid row” wins. If backend uses `TOP (1)` with **no ORDER BY**, which row is returned is non-deterministic.
+The doc says: use WorkspaceApp / AppAudience / WorkspaceReport approvers “if present”, else fallback to `Workspace.WorkspaceApprover`.
 
-- **Example (concept from logic_fin_Appro.md CASE 5; you can add similar rows to 1-AMER):**
-  - DB rows:
-    - LATAM/Cluster, SL=Overall, **ClientKey=NULL** (wildcard), Approvers = general@dentsu.com
-    - LATAM/Cluster, SL=Overall, **ClientKey=Nike**, Approvers = nike.approver@dentsu.com
-  - Request: LATAM/Cluster, SL=Overall, **Client=Nike**.
-  - Both rows pass strict match. If backend returns **general@dentsu.com** → **False negative** (correct approver is nike.approver@dentsu.com). If backend returns **nike.approver@dentsu.com** → correct.
-  - If you *intend* “client-specific overrides wildcard” but do not implement it, you can get either a false negative (wrong person) or inconsistent behaviour.
+**Schema:**
 
-**How to test:** Insert two RLSAMERApprovers rows with same Entity/SL, one ClientKey=NULL and one ClientKey='Nike'. Run resolution for request Client=Nike multiple times; if backend has no deterministic “prefer non-NULL ClientKey” rule, you may see different approvers. Add ORDER BY (e.g. prefer non-NULL ClientKey) and retest.
+| Table / level | Column | Nullable | Meaning of “present” |
+|---------------|--------|----------|------------------------|
+| WorkspaceApps | Approvers | **NULL** | NULL = not present |
+| WorkspaceReports | Approvers | **NULL** | NULL = not present |
+| AppAudiences | Approvers | **NOT NULL** | Can be empty string `''` |
+| Workspaces | WorkspaceApprover | **NOT NULL** | Fallback always has a value |
 
----
+**Impact:**  
+If “present” is implemented only as `IS NOT NULL`:
 
-### 2.4 FALSE NEGATIVE: SL strict match — request uses value not in DB
+- **AppAudiences:** A row with `Approvers = ''` would be treated as “present” and return empty approvers → request might be sent to no one or misrouted → **effective true negative** (no valid approver) or wrong behaviour.
+- **WorkspaceApps / WorkspaceReports:** NULL is correctly “not present”; empty string is not in schema comment but if ever allowed, same risk.
 
-**Logic doc:** Non-Organisation dimensions (e.g. SL) require strict match; no hierarchy. If request has SL not present in any row, no match.
-
-- **Example (1-AMER):**
-  - Request: Canada, Market, **SL=NEW_SL**, Client=empty.
-  - DB: Canada/Market has only SL in (Overall, CRTV, CXM, MED, FUNC). No NEW_SL.
-  - **Result:** No row → null. This is **correct** (no false positive). But if the *intended* behaviour was “treat NEW_SL as Overall” and the backend does not implement that, you get **false negative** (user expects an approver). So “100%” depends on whether “unknown SL = no approver” is desired.
-
-**How to test:** In `Test_Approver_Resolution_At_DB.sql` 3a, set SLKey to a value not in 1-AMER (e.g. 'NEW_SL'). Expect no row. Document that unknown dimension values → no RLS approver unless you add explicit fallback rules.
+**Recommendation:** Define “present” as: `Approvers IS NOT NULL AND LTRIM(RTRIM(Approvers)) <> ''` (or equivalent). Document this in the logic so backend and DB tests align.
 
 ---
 
-## 3. OLS — When It Can Fail
+### 1.3 **OLS path ordering and fallback**
 
-### 3.1 FALSE POSITIVE / FALSE NEGATIVE: Wrong ApprovalMode or delivery path
+The doc order is: Case 1 AppBased → Case 2 AudienceBased → Case 3 Standalone Report → Final Fallback Workspace.
 
-**Logic doc:** AppBased → WorkspaceApp.Approvers; AudienceBased → AppAudience.Approvers; Standalone report (SAR) → WorkspaceReport.Approvers; fallback → Workspace.WorkspaceApprover.
+The **actual** decision flow depends on **request type** (Report vs Audience) and, for Report, on **ReportDeliveryMethod** (SAR vs AUR). If the backend does not branch on item type and delivery method first, it could:
 
-- If backend assumes **AppBased** but workspace is **AudienceBased**, it reads WorkspaceApp.Approvers and may return app-level approvers when audience-level approvers should be used (or vice versa).
-- **Example:** Workspace has ApprovalMode = AudienceBased; request is for a specific audience. Backend uses App approvers → **False positive** (wrong approver list) or **False negative** (audience approvers not returned).
+- Use App approvers for a SAR report (wrong source).
+- Use Report approvers for an AUR report (wrong source).
 
-**How to test:** In `Test_Approver_Resolution_At_DB.sql` run both 2b (by App) and 2c (by Audience) for the same workspace/app with different ApprovalMode assumptions; compare results. Ensure backend reads ApprovalMode and ReportDeliveryMethod from DB and branches accordingly.
-
----
-
-### 3.2 FALSE NEGATIVE: Empty/NULL Approvers not falling back
-
-**Logic doc:** If no approvers on Report/App/Audience, fallback to Workspace.WorkspaceApprover.
-
-- If backend treats empty string or NULL as “found” and does not fall back, it may return “no approver” when WorkspaceApprover should be used.
-- **Example:** WorkspaceReport has Approvers = NULL. Backend returns “no OLS approver”. Workspace has WorkspaceApprover = owner@dentsu.com. **Correct:** return owner@dentsu.com. **Result if no fallback:** False negative.
-
-**How to test:** Set a report’s Approvers to NULL; ensure workspace has WorkspaceApprover. Run OLS resolution; expect WorkspaceApprover. Same for App and Audience with NULL approvers.
+**Recommendation:** Document explicitly: for OLS item type = Report, first read `WorkspaceReports.ReportDeliveryMethod`; if **1 (SAR)** use `WorkspaceReports.Approvers`; if **0 (AUR)** resolve via App + Audience and ApprovalMode. For item type = Audience, use AppAudiences directly. This avoids false positives (wrong approvers) and true negatives (missing approvers).
 
 ---
 
-## 4. LM — When It Can Fail
+## 2. RLS — Issues
 
-### 4.1 FALSE NEGATIVE: RequestedFor not in refv.Employees
+### 2.1 **Multiple matching rows — non-deterministic choice (wrong approver)**
 
-- Employee not in HR feed or view → no row → no LM. So “no approver” is expected for that user. If policy says “every request must have LM”, that’s a process false negative (missing required approver).
+The doc (CASE 5) states: when both a client-specific row and a wildcard (NULL client) row match, “your logic does NOT prioritize client-specific over wildcard” and “first valid row encountered will be chosen.”
 
-### 4.2 FALSE POSITIVE / FALSE NEGATIVE: Wrong or stale ManagerMapKey
+**DB test script:** Uses `SELECT TOP (1) ...` with **no ORDER BY** on RLS queries.
 
-- If ref.Employees has wrong or outdated ManagerMapKey, backend returns wrong LM. **False positive** (wrong person as LM) or **False negative** (real LM not returned if manager was removed).
+**Impact:**  
+SQL Server can return any one of the matching rows. So:
 
-**How to test:** Use `Test_Approver_Resolution_At_DB.sql` section 1 with an email that does not exist in refv.Employees → expect no row. With an email that exists, confirm EmployeeParentEmail is the intended LM.
+- **False positive in a business sense:** Returning the wildcard approver when a more specific (e.g. client-specific) row exists and should be preferred. The approver is “valid” but not the intended one.
+- **True negative:** Less likely from ordering alone, but if the “first” row is chosen by chance and that row has invalid/empty Approvers, you could miss the correct row.
 
----
-
-## 5. Summary Table — Will It Work 100%?
-
-| Scenario | Can cause false positive? | Can cause false negative? | Mitigation (backend/DB) |
-|----------|---------------------------|----------------------------|--------------------------|
-| RLS: no Entity traversal | No | **Yes** | Implement Market→Cluster→Region→Global; stop at first match. |
-| RLS: wrong SecurityModel/SecurityType | No | **Yes** | Resolve Ids from workspace + request; validate before lookup. |
-| RLS: multiple matches (client vs wildcard) | **Yes** (wrong person) | **Yes** (right person not chosen) | Define priority (e.g. client-specific first); ORDER BY or equivalent. |
-| RLS: unknown SL/dimension value | No | Depends on policy | Document: no match → null; or add explicit fallback rules. |
-| OLS: wrong ApprovalMode/path | **Yes** | **Yes** | Read ApprovalMode and ReportDeliveryMethod; branch to correct table. |
-| OLS: no fallback to WorkspaceApprover | No | **Yes** | If Report/App/Audience approvers empty/NULL → use WorkspaceApprover. |
-| LM: user not in refv.Employees | No | **Yes** | Process: require LM or allow manual override. |
-| LM: wrong manager in ref | **Yes** | **Yes** | Keep ref.Employees in sync with HR. |
+**Recommendation:** Either:
+- Define a deterministic order (e.g. prefer non-NULL dimension keys over NULL, with explicit ORDER BY), or
+- Document that behaviour is intentionally “any matching row” and accept that client-specific vs wildcard is not guaranteed.
 
 ---
 
-## 6. Suggested Robustness Tests (Script_Populate)
+### 2.2 **Request dimension NULL not defined**
 
-Run these **after** 0-Global and 1-AMER (and other 1-* scripts) so data exists.
+The doc defines **DB NULL = wildcard**. It does not define what happens when the **request** sends NULL (or missing) for a dimension (e.g. optional Client).
 
-1. **RLS exact match (happy path)**  
-   Request: AMER-ORGA, Canada, Market, Overall, Client=empty.  
-   Expected: One row, Approvers = Desiree.Benson@dentsu.com (per 1-AMER).  
-   Use `Test_Approver_Resolution_At_DB.sql` section 3a.
+**Current test script pattern:**  
+`(a.EntityKey = N'Canada' OR (a.EntityKey IS NULL AND N'Canada' IS NULL))`  
+So if the request sends `EntityKey = NULL`, the literal `N'Canada'` is not NULL, and the condition effectively requires `EntityKey = 'Canada'`. A row with `EntityKey = NULL` (wildcard) would not match a request with NULL EntityKey unless the backend sends a concrete value or special handling exists.
 
-2. **RLS traversal (false negative if missing)**  
-   Request: AMER-ORGA, **Argentina**, Market, Overall. Then same request but with Entity = North America, Cluster (simulating “second step” of traversal).  
-   Expected: First lookup Argentina/Market → match; if you simulate “no Market row” and try Cluster, North America/Cluster/Overall should match.  
-   Use section 5 “Traversal simulation” with different EntityKey/EntityHierarchy.
+**Impact:**  
+If the UI/API sometimes sends NULL for optional dimensions:
 
-3. **RLS wrong SecurityType (false negative)**  
-   Use 3a with LoVValue that does not exist in RLSAMERApprovers (e.g. wrong workspace type).  
-   Expected: No row.
+- **True negative:** Valid wildcard rows (DB NULL) might not match, so no approver found when one exists.
 
-4. **RLS SL mismatch (no match)**  
-   Use 3a with SLKey = 'NEW_SL' (not in 1-AMER).  
-   Expected: No row.
+**Recommendation:** Document how request NULL/missing dimensions are mapped: e.g. “request NULL means match only rows where that dimension is NULL (wildcard)” and implement the predicate accordingly (e.g. `(request_val IS NULL AND a.EntityKey IS NULL) OR (request_val IS NOT NULL AND (a.EntityKey = request_val OR a.EntityKey IS NULL))`). Align DB test script with that.
 
-5. **OLS by Report vs by App**  
-   Run 2a (Report) and 2b (App) with same WorkspaceId and appropriate Ids; ensure backend uses the path that matches ApprovalMode and delivery (report vs app).
+---
 
-6. **LM missing user**  
-   Use section 1 with RequestedFor = 'nonexistent@dentsu.com'.  
-   Expected: No row.
+### 2.3 **Workspace-specific RLS tables and dimension sets**
 
-These examples use Script_Populate only as **examples**; adjust SecurityModelCode, LoVValue, and entity/SL/client values to match your DB. Running them helps verify that the application does not produce false positives or false negatives in the cases above.
+Different workspaces use different RLS tables (e.g. RLSAMERApprovers, RLSCDIApprovers, RLSWFIApprovers, RLSGIApprovers, RLSFUMApprovers, RLSEMEAApprovers) and **different dimension columns** (AMER: Entity, SL, Client, PC, CC, PA, MSS; CDI: Entity, Client, SL; WFI: Entity, PA; etc.).
+
+The logic doc is generic (Organisation + “all other dimensions”). If the backend:
+
+- Uses the wrong table for a workspace, or
+- Uses the wrong subset of dimensions for that model,
+
+then:
+
+- **True negative:** Correct approver row exists but is never queried.
+- **False positive:** Wrong table returns a row that doesn’t really match the intended policy.
+
+**Recommendation:** Keep a mapping (e.g. in docs or config): Workspace/SecurityModel → RLS table and list of dimension columns. Backend and Test_Approver_Resolution_At_DB.sql should both use this so behaviour is consistent and auditable.
+
+---
+
+### 2.4 **Organisation hierarchy order and traversal**
+
+The doc defines order: Market → Cluster → Region → Global (most specific first). Traversal is done in the **backend**; the DB script only does single-level lookups.
+
+If the backend implements a different order or skips a level:
+
+- **False positive:** Could pick a broader-level approver when a more specific one exists.
+- **True negative:** Could stop too early and return null when a broader level has a valid row.
+
+**Recommendation:** Document the exact enum or ordinal for EntityHierarchy (e.g. Market=1, Cluster=2, Region=3, Global=4) and that traversal tries levels in that order until a row is found. Ensure backend and any DB-side tests that simulate traversal use the same order.
+
+---
+
+## 3. Summary table
+
+| # | Area | Issue | Risk | Type |
+|---|------|--------|------|------|
+| 1.1 | OLS | SAR = 0 in doc vs SAR = 1 in DB | Wrong path (report vs app/audience) | FP / TN |
+| 1.2 | OLS | “Present” not defined for NULL/empty Approvers | Empty approvers used or fallback skipped | TN / wrong behaviour |
+| 1.3 | OLS | Path ordering vs item type + ReportDeliveryMethod | Wrong source of approvers | FP / TN |
+| 2.1 | RLS | TOP (1) without ORDER BY, multiple matches | Wrong approver (e.g. wildcard over specific) | FP (business) |
+| 2.2 | RLS | Request dimension NULL semantics undefined | Wildcard rows not matched | TN |
+| 2.3 | RLS | Workspace → table/dimensions mapping | Wrong table or dimensions queried | TN / FP |
+| 2.4 | RLS | Hierarchy order/traversal not aligned | Wrong or missing approver | FP / TN |
+
+**Abbreviations:** FP = false positive (wrong approver or wrong path), TN = true negative (no approver when one exists).
+
+---
+
+## 4. References
+
+- **Logic (unchanged):** `new_logic/logic_fin_Appro.md`
+- **DB schema:** `Sakura_DB/Dbo/Tables/` — Workspaces.sql, WorkspaceApps.sql, WorkspaceReports.sql, AppAudiences.sql, RLSAMERApprovers.sql, RLSCDIApprovers.sql, etc.
+- **DB test script:** `Script_Populate/Test_Approver_Resolution_At_DB.sql`
+- **Authoritative SAR=1:** `Sakura_DB/Dbo/Tables/WorkspaceReports.sql`, `Sakura_DB/Share/Views/OLS/*.OLS.sql`, frontend `add-sar-form.component.ts` (e.g. `reportDeliveryMethod === 1` for SAR)
