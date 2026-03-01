@@ -71,15 +71,15 @@ When a **user (requester)** asks for access, the request goes through three appr
 flowchart TB
     subgraph Requester["1. Requester"]
         R1[User requests access]
-        R2[Selects Workspace, Report/Audience]
+        R2[Selects Workspace, Report or Audience]
         R3[Selects RLS dimensions: Model, Type, Org, SL, Client, etc.]
         R1 --> R2 --> R3
     end
 
     subgraph Resolve["2. System resolves approvers"]
-        LM[LM from Workday/ref.Employees]
-        OLS[OLS from Report/App/Audience]
-        RLS_DB[(RLS*Approvers tables)]
+        LM[LM from Workday or ref.Employees]
+        OLS[OLS from Report or App or Audience]
+        RLS_DB[("RLS Approvers tables")]
         RLS_LOOKUP[Lookup RLS approver by dimension]
         R3 --> LM
         R2 --> OLS
@@ -95,7 +95,7 @@ flowchart TB
         RLS_LOOKUP -->|NOT FOUND| BLOCK[Request blocked - no RLS approver]
     end
 
-    subgraph Chain["4. Approval chain (in order)"]
+    subgraph Chain["4. Approval chain in order"]
         P1[Pending LM]
         P2[Pending OLS]
         P3[Pending RLS]
@@ -111,26 +111,26 @@ flowchart TB
 
 ---
 
-### Diagram B: Where "Assign RLS Approver" fits (admin vs requester)
+### Diagram B: Where Assign RLS Approver fits - admin vs requester
 
 **Admins** assign RLS approvers per dimension **before** any request. That data is what the system uses when a **requester** submits a request with RLS dimensions.
 
 ```mermaid
 flowchart LR
-    subgraph Admin["Admin (WSO Console)"]
+    subgraph Admin["Admin WSO Console"]
         A1[Assign RLS Approver]
-        A2[Pick Model + Type + dimensions]
-        A3[Enter approver email(s)]
+        A2[Pick Model and Type and dimensions]
+        A3[Enter approver emails]
         A4[Save]
         A1 --> A2 --> A3 --> A4
     end
 
     subgraph Storage["Stored"]
-        DB[(RLS*Approvers tables)]
+        DB[("RLS Approvers tables")]
         A4 --> DB
     end
 
-    subgraph Requester["Requester (later)"]
+    subgraph Requester["Requester later"]
         U1[User submits permission request]
         U2[Selects RLS dimensions]
         U3[System looks up approver for that dimension]
@@ -142,22 +142,22 @@ flowchart LR
     U3 -->|No match| BLOCK[Request blocked]
 ```
 
-**In words:** Admin **assigns** approvers for each dimension combination → stored in RLS*Approvers. When a user **requests** access and selects dimensions → system **looks up** that combination in RLS*Approvers → if there is a row, the request is routed to those approvers (Pending RLS); if not, the request cannot proceed.
+**In words:** Admin **assigns** approvers for each dimension combination → stored in RLS Approvers tables. When a user **requests** access and selects dimensions → system **looks up** that combination → if there is a row, the request is routed to those approvers (Pending RLS); if not, the request cannot proceed.
 
 ---
 
-### Diagram C: What happens when user asks for something (RLS part only)
+### Diagram C: What happens when user asks for something - RLS part only
 
 Focus on **RLS only**: what the system does with the user's dimension selection and how it links to assigned approvers.
 
 ```mermaid
 flowchart TD
-    Start[User has selected RLS dimensions] --> Lookup[System looks up RLS*Approvers for that Model + Type + dimensions]
+    Start[User has selected RLS dimensions] --> Lookup[System looks up RLS Approvers for that Model and Type and dimensions]
 
-    Lookup --> Exact{Exact match?}
+    Lookup --> Exact{"Exact match?"}
 
-    Exact -->|Yes| Found[RLS approver(s) found]
-    Exact -->|No| Entity{Model has Entity?}
+    Exact -->|Yes| Found[RLS approvers found]
+    Exact -->|No| Entity{"Model has Entity?"}
 
     Entity -->|Yes| Traverse[Traverse Entity only: Market to Cluster to Region to Global. Other dimensions stay fixed]
     Traverse --> Try[Try match at each level]
@@ -168,51 +168,154 @@ flowchart TD
 
     Found --> Create[Request can be created]
     Create --> Pending[Request goes to Pending RLS]
-    Pending --> Notify[RLS approver(s) notified]
+    Pending --> Notify[RLS approvers notified]
     Notify --> Decide[Approver approves or rejects]
 
     NotFound --> Block[Request blocked. Admin must assign approver for this dimension]
 ```
 
-**In words:** User selects dimensions → system looks for an **exact match** in RLS*Approvers. If none, and the model uses Entity, system **traverses only Entity** (Market → Cluster → Region → Global), other dimensions fixed. If match found → request created, **Pending RLS**, approver notified. If **no match** → **NOT FOUND** → request **blocked** until admin assigns an approver for that dimension.
+**In words:** User selects dimensions → system looks for an **exact match** in RLS Approvers tables. If none, and the model uses Entity, system **traverses only Entity** (Market → Cluster → Region → Global), other dimensions fixed. If match found → request created, **Pending RLS**, approver notified. If **no match** → **NOT FOUND** → request **blocked** until admin assigns an approver for that dimension.
 
 ---
 
-### Diagram D: Full lifecycle in one view (request states)
+### Diagram D: Full lifecycle in one view - request states
 
 From creation to final outcome, including where RLS sits.
 
 ```mermaid
 stateDiagram-v2
     direction LR
-    [*] --> Created: User submits request
-    Created --> PendingLM: LM, OLS, RLS approvers resolved
-
-    PendingLM --> PendingOLS: LM approves
-    PendingLM --> Rejected: LM rejects
-    PendingLM --> Cancelled: User cancels
-
-    PendingOLS --> PendingRLS: OLS approves
-    PendingOLS --> Rejected: OLS rejects
-    PendingOLS --> Cancelled: User cancels
-
-    PendingRLS --> Approved: RLS approves
-    PendingRLS --> Rejected: RLS rejects
-    PendingRLS --> Cancelled: User cancels
-
+    [*] --> Created
+    Created --> PendingLM
+    PendingLM --> PendingOLS
+    PendingLM --> Rejected
+    PendingLM --> Cancelled
+    PendingOLS --> PendingRLS
+    PendingOLS --> Rejected
+    PendingOLS --> Cancelled
+    PendingRLS --> Approved
+    PendingRLS --> Rejected
+    PendingRLS --> Cancelled
     Approved --> [*]
     Rejected --> [*]
     Cancelled --> [*]
-
-    note right of PendingRLS: RLS approver was resolved at create time from RLS*Approvers by dimension match or traversal
 ```
+
+**Transition labels:** Created = User submitted request, LM/OLS/RLS approvers resolved. Pending LM → Pending OLS = LM approves. Pending OLS → Pending RLS = OLS approves. Pending RLS → Approved = RLS approves. **Note:** RLS approver was resolved at create time from RLS Approvers tables by dimension match or Entity traversal.
 
 **In words:** Request is **created** only if LM, OLS, and **RLS approver** can be resolved (RLS from dimension lookup/traversal). Then **Pending LM → Pending OLS → Pending RLS**. The **RLS approver** (person assigned to that dimension in WSO) sees the request in **Pending RLS** and approves or rejects. Without an assigned RLS approver for that dimension, the request never reaches Created.
 
 ---
 
+## How it all ties together: Workspace, OLS, Security Model, Type, Dimensions, RLS assignment
+
+This section ties the pieces in context: **workspace**, **report or app or audience** (which drive **OLS approver**), **security model** and **security type** (which drive **dimensions**), and how **RLS approver assignment** fits in.
+
+### Workspace contains: Report / App / Audience → OLS approver
+
+Each **workspace** has catalogue items: **standalone reports**, **apps**, and **audiences**. Who approves *whether the user can see that report or audience* is the **OLS approver**. OLS approvers are assigned per report, per app, or per audience (depending on delivery mode).
+
+```mermaid
+flowchart LR
+    subgraph WS["Workspace e.g. CDI, WFI, GI, AMER"]
+        R[Report]
+        A[App]
+        AU[Audience]
+    end
+    R --> OLS_R[OLS approver for report]
+    A --> OLS_A[OLS approver for app]
+    AU --> OLS_AU[OLS approver for audience]
+    OLS_R --> OLS[OLS Approver]
+    OLS_A --> OLS
+    OLS_AU --> OLS
+```
+
+**In words:** Workspace = container. User picks a **report** or **app** or **audience** → system knows **who is the OLS approver** for that object (from Workspace Reports / Workspace Apps / App Audiences). That is **not** RLS; RLS is about **data** (dimensions).
+
+---
+
+### Workspace has Security Model; each model has Security Type; dimensions are tied to the type
+
+For **RLS**, the workspace has one or more **security models** (e.g. CDI-Default, WFI-Default). Each security model has **security types** (e.g. CDI has one type "Client Data Insights"; AMER has Orga, PA, Client, CC, MSS, PC). The **dimensions** you must fill (Organization, Service Line, Client, etc.) are **associated with the security type**: different types need different dimensions.
+
+```mermaid
+flowchart TB
+    W[Workspace] --> M1[Security Model 1]
+    W --> M2[Security Model 2]
+    M1 --> T1[Security Type A]
+    M1 --> T2[Security Type B]
+    M2 --> T3[Security Type C]
+    T1 --> D1[Dimensions: Org, SL, Client]
+    T2 --> D2[Dimensions: Org, SL, Cost Center]
+    T3 --> D3[Dimensions: Org, People Aggregator]
+```
+
+**In words:** **Workspace** → **Security model** (e.g. CDI-Default). **Security model** → **Security type** (e.g. Client Data Insights, Orga, WFI). **Security type** → **which dimensions** are required (e.g. CDI Client Data Insights = Organization + Service Line + Client; WFI = Organization + People Aggregator). So when a user selects a **type**, the system knows **which dimension fields** to show.
+
+---
+
+### RLS approver assignment: you assign approvers per dimension (model + type + dimension values)
+
+**RLS approver assignment** in WSO is: for a given **security model** and **security type**, you build a **dimension combination** (e.g. Region = Americas, Service Line = Overall, Client = All Clients) and **assign one or more approver emails** to that combination. That row is stored in the RLS Approvers tables. When a **requester** later selects the same model, type, and dimension values, the system finds that row and routes the request to those approvers (Pending RLS).
+
+```mermaid
+flowchart TB
+    subgraph Admin["Admin assigns in WSO"]
+        Pick[Pick Security Model and Security Type]
+        Build[Build dimension: Org, SL, Client, etc. as required by type]
+        Enter[Enter RLS approver emails]
+        Save[Save]
+        Pick --> Build --> Enter --> Save
+    end
+
+    subgraph Stored["Stored per workspace"]
+        Row[One row per combination: Model + Type + Dimension values + Approvers]
+        Save --> Row
+    end
+
+    subgraph Requester["When requester submits"]
+        ReqDim[Requester selects same Model, Type, Dimensions]
+        Lookup[System looks up row for that combination]
+        Route[Request routed to approvers in that row - Pending RLS]
+        ReqDim --> Lookup
+        Row --> Lookup
+        Lookup --> Route
+    end
+```
+
+**In words:** **Security model** and **security type** define **which dimensions** exist. Admin **assigns RLS approvers** by choosing model, type, and **filling those dimensions** with values (e.g. Americas, Overall, All Clients) and saving approver emails. That is one **row** in RLS Approvers. When a user **requests** access and selects the same model, type, and dimension values, the system **finds that row** and uses the approvers on it for **Pending RLS**. So RLS approver assignment is **defining who approves which data slice** (which dimension combination).
+
+---
+
+### One diagram: Workspace → OLS vs RLS, and where RLS assignment fits
+
+```mermaid
+flowchart TB
+    subgraph Workspace["Workspace"]
+        Report[Report or App or Audience]
+        SecModel[Security Model]
+        Report --> OLS[OLS approver - who approves report/audience access]
+        SecModel --> SecType[Security Type]
+        SecType --> Dims[Dimensions tied to type]
+        Dims --> RLSAssign[RLS approver assignment: assign people to each dimension combination]
+        RLSAssign --> RLSTable[RLS Approvers table]
+    end
+
+    User[User requests access] --> Report
+    User --> SecModel
+    User --> DimValues[User selects dimension values]
+    DimValues --> Lookup[Lookup RLS Approvers by model + type + dimensions]
+    RLSTable --> Lookup
+    Lookup --> RLS[RLS approver - who approves data access for that slice]
+```
+
+**In words:** **Workspace** has **reports/apps/audiences** → **OLS approver**. Same workspace has **security model** → **security type** → **dimensions** (tied to type). **RLS approver assignment** = filling dimension combinations and assigning approver emails; stored in **RLS Approvers table**. When **user** requests access and selects **dimension values**, system **looks up** that table → gets **RLS approver** for that slice. So: **OLS** = who approves the *object* (report/audience); **RLS** = who approves the *data* (dimension slice), and **RLS assignment** is how you define who that is for each slice.
+
+---
+
 ## Definitions
 
+| Term | Meaning |
 |------|--------|
 | **RLS** | Row-Level Security. Approvers who can approve permission requests for **one specific dimension combination**. |
 | **Dimension** | A set of fields that identify *which* data slice an approver covers (e.g. Region + Service Line + Client). The system matches approvers by **full dimension**. |
