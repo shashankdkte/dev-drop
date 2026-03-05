@@ -220,6 +220,235 @@ flowchart TD
 
 ---
 
+## PART 5A — Permission Types and Dimensions: Detailed Reference
+
+This section explains **what each dimension means** (Service Line, Cost Center, Entity, etc.) and then **each permission type in detail** — what scope it uses, when to use it, and how it behaves in Sakura and Azure AD.
+
+---
+
+### The Building Blocks: What Each Dimension Is
+
+These are the "vocabulary" Sakura uses to scope access. All of this data lives in the Sakura database and is used to define *who can see what*.
+
+```mermaid
+flowchart TB
+    subgraph DIMENSIONS["📐 Dimensions Used to Scope Permissions"]
+        ENT["🏢 Entity\n\n• Organizational geography / structure\n• Hierarchy: Global → Region → Cluster → Market → Entity\n• Example: DACH (Germany, Austria, Switzerland)\n• ~1,497 rows in SAKURA.Entity\n• Answers: WHERE in the org is this access for?"]
+        SL["📊 Service Line\n\n• Business capability or product line\n• Examples: CXM, Media, Creative, CISM, COV\n• ~21 rows in SAKURA.ServiceLine\n• CRITICAL: Azure AD group names contain ServiceLine codes\n  e.g. #SG-UN-SAKURA-CXM, #SG-UN-SAKURA-Media\n• Answers: WHICH business line?"]
+        CC["💰 Cost Center\n\n• Department or project budget unit\n• Types: Single, BPC Rollup, Business Unit\n• ~2,908 rows in SAKURA.CostCenter\n• Often tied to Service Line (CostCenterServiceLineMapping)\n• Answers: WHICH cost center / department?"]
+        MSS["📋 Master Service Set (MSS)\n\n• A named collection of services grouped together\n• Used for bundled service offerings\n• ~260 rows in SAKURA.MasterServiceSet\n• Answers: WHICH service bundle?"]
+        CLIENT["👔 Client\n\n• Customer or account the work is for\n• ~96,140 rows in SAKURA.Client\n• Used for client-specific reports and data\n• Answers: WHICH client / customer?"]
+        RD["📊 Reporting Deck\n\n• Logical grouping of Power BI reports\n• User selects a deck; each deck maps to Azure AD groups\n• ~24 rows; SAKURA.ReportingDeck + ReportingDeckSecurityGroups\n• Answers: WHICH set of reports?"]
+        SGCODE["🔐 Security Group Code (SGM)\n\n• A code that represents an Azure AD security group\n• Used in SGM permission type for group-based access\n• Answers: WHICH security group (by code)?"]
+    end
+```
+
+| Dimension | What It Is in Plain English | Where It Lives in DB | Typical Use |
+|---|---|---|---|
+| **Entity** | The organizational unit (region/market/entity). Think "which part of the company" — e.g. DACH, North America, APAC. | `SAKURA.Entity` | Orga, CP — to scope access by geography/structure. |
+| **Service Line** | The business line or capability — e.g. CXM (Customer Experience Management), Media, Creative. Drives which Azure AD groups a user gets (group names contain the code). | `SAKURA.ServiceLine` | Orga, CC, MSS — core for group matching. |
+| **Cost Center** | A budget/department unit — e.g. a single cost center, a BPC rollup, or a business unit. Often filtered by Service Line in the portal. | `SAKURA.CostCenter` | Orga, CC — who can see data for which cost center. |
+| **Master Service Set (MSS)** | A predefined bundle of services. One code = one set. | `SAKURA.MasterServiceSet` | MSS permission only — access by service bundle. |
+| **Client** | A client or customer account. Very granular — tens of thousands of rows. | `SAKURA.Client` | CP (Client Project) — access to client-specific data. |
+| **Reporting Deck** | A label for a set of Power BI reports. Each deck is mapped to one or more Azure AD groups in `ReportingDeckSecurityGroups`. | `SAKURA.ReportingDeck` | Reporting Deck permission — direct "give me this deck" access. |
+| **Security Group Code** | A code that refers to an Azure AD group used for SGM-type access. | Used in `ApproversSGM` and SGM detail | SGM permission — access controlled by that group. |
+
+---
+
+### Each Permission Type in Detail
+
+---
+
+#### 1. Organisation Permission (Orga) — RequestType = 0
+
+| Aspect | Detail |
+|---|---|
+| **Purpose** | Grant access at the **organisation** level: a combination of Entity + Service Line + Cost Center. Broad but still scoped. |
+| **Scope dimensions** | **Entity** (e.g. DACH), **Service Line** (e.g. CXM), **Cost Center** (e.g. CXM Solutions). |
+| **What the user selects** | Entity → Service Line → Cost Center (often cost centers filtered by service line via Smart Filters). |
+| **Stored in** | `PermissionHeader` (RequestType=0) + `PermissionOrgaDetail` (EntityCode, ServiceLineCode, CostCenterCode). |
+| **Approvers** | From `ApproversOrga` — matched on Entity + Service Line + Cost Center (with hierarchy fallback). |
+| **Syncs to Azure AD?** | **Yes.** Request appears in `RDSecurityGroupPermission`; user is added to every group whose name **contains** the ServiceLine code (e.g. #SG-UN-SAKURA-CXM, #SG-UN-SAKURA-CXMBU) plus `#SG-UN-SAKURA-EntireOrg`. |
+| **Use case** | "I need access to Power BI for the DACH region, CXM service line, and my cost center." Most common request type. |
+| **Example** | Entity = DACH, Service Line = CXM, Cost Center = CXM Solutions → user gets access to CXM-related groups for that app. |
+
+```mermaid
+flowchart LR
+    A["User selects\nEntity + ServiceLine + CostCenter"] --> B["PermissionOrgaDetail\nEntityCode, ServiceLineCode, CostCenterCode"]
+    B --> C["RDSecurityGroupPermission view\nmatches ServiceLineCode to group names"]
+    C --> D["Sync adds user to\n#SG-UN-SAKURA-CXM*, EntireOrg"]
+```
+
+---
+
+#### 2. Client Project Permission (CP) — RequestType = 1
+
+| Aspect | Detail |
+|---|---|
+| **Purpose** | Grant access at the **client/project** level — for people who need to see data for a specific client or project. |
+| **Scope dimensions** | **Entity** + **Client** (and project where applicable). |
+| **What the user selects** | Entity and Client (and possibly project). |
+| **Stored in** | `PermissionHeader` (RequestType=1) + `PermissionCPDetail` (ClientCode, project-related fields). |
+| **Approvers** | From `ApproversCP` — matched on client/project scope. |
+| **Syncs to Azure AD?** | **Not** via the main `RDSecurityGroupPermission` view (CP is excluded). User still gets **EntireOrg** for app-level access; client-specific access is enforced by other mechanisms (e.g. RLS or separate group logic). |
+| **Use case** | "I need access to reports for Client ABC / Project X." Fine-grained, client-specific. |
+| **Example** | Entity = DACH, Client = Acme Corp, Project = Campaign 2024 → user can be given access to that client’s data (e.g. via RLS or app-specific groups). |
+
+---
+
+#### 3. Cost Center Permission (CC) — RequestType = 2
+
+| Aspect | Detail |
+|---|---|
+| **Purpose** | Grant access centred on **Cost Center** (and Service Line). No Entity in the scope — simpler than Orga. |
+| **Scope dimensions** | **Service Line** + **Cost Center**. |
+| **What the user selects** | Service Line and Cost Center (cost centers often filtered by service line). |
+| **Stored in** | `PermissionHeader` (RequestType=2) + detail table for CC (ServiceLineCode, CostCenterCode). |
+| **Approvers** | Same approver logic as Orga in practice (FindOrgaApprovers used for type 0 and 2). |
+| **Syncs to Azure AD?** | **Yes.** Same as Orga: appears in `RDSecurityGroupPermission`, user added to groups whose name contains the ServiceLine code + EntireOrg. |
+| **Use case** | "I need access for the CXM service line and cost center 1234" without specifying an entity. |
+| **Example** | Service Line = CXM, Cost Center = 5678 → user gets CXM-related groups (e.g. #SG-UN-SAKURA-CXM, #SG-UN-SAKURA-CXMBU). |
+
+**Orga vs CC (short):** Orga = Entity + Service Line + Cost Center; CC = Service Line + Cost Center only. Both sync to Azure AD the same way (via ServiceLine in group names).
+
+---
+
+#### 4. Reporting Deck Permission — RequestType = 4
+
+| Aspect | Detail |
+|---|---|
+| **Purpose** | Grant access to a **specific reporting deck** — a named set of Power BI reports. |
+| **Scope dimensions** | **Reporting Deck** (and application context). |
+| **What the user selects** | The reporting deck they need (options can be filtered by service line in the UI). |
+| **Stored in** | `PermissionHeader` (RequestType=4) + `PermissionReportingDeckDetail`. |
+| **Approvers** | From `ApproversReportingDeck`. |
+| **Syncs to Azure AD?** | **Not** via the main `RDSecurityGroupPermission` view (Reporting Deck is excluded). Access to the deck is enforced by other mapping (e.g. ReportingDeckSecurityGroups and app-specific logic). |
+| **Use case** | "I need the Finance Reporting Deck" or "I need the Client Closing deck." Direct deck-level access. |
+| **Example** | User selects "Client Closing" deck → gets access to the groups linked to that deck in `ReportingDeckSecurityGroups` (handled outside the main Orga/CC/MSS sync view). |
+
+---
+
+#### 5. Security Group Manager Permission (SGM) — RequestType = 5
+
+| Aspect | Detail |
+|---|---|
+| **Purpose** | Grant access based on a **security group code** — centralised, group-based access control. |
+| **Scope dimensions** | **Security Group Code** (references an Azure AD group by code, not by full GUID in the request). |
+| **What the user selects** | The security group (by code) they need to be in. |
+| **Stored in** | `PermissionHeader` (RequestType=5) + `PermissionSGMDetail` (SecurityGroupCode). |
+| **Approvers** | From `ApproversSGM`. |
+| **Syncs to Azure AD?** | **Not** via the main `RDSecurityGroupPermission` view. SGM has its own enforcement path (e.g. separate sync or logic) so users get the right Azure AD group. |
+| **Use case** | "Add me to the group that controls access to X" — when access is defined by a named security group. |
+| **Example** | User requests Security Group Code "SG-Finance-Read" → after approval, they are added to the corresponding Azure AD group via SGM-specific process. |
+
+---
+
+#### 6. Data Subject Request (DSR) — RequestType = 6
+
+| Aspect | Detail |
+|---|---|
+| **Purpose** | Used for **data subject / privacy-related** requests (e.g. GDPR data access or deletion). |
+| **Scope dimensions** | Specific to the DSR process (not the same as Orga/CC/CP). |
+| **Syncs to Azure AD?** | **No.** Excluded from `RDSecurityGroupPermission`. Used for compliance workflow, not for standard report access. |
+
+---
+
+#### 7. Master Service Set Permission (MSS) — RequestType = 7
+
+| Aspect | Detail |
+|---|---|
+| **Purpose** | Grant access based on a **Master Service Set** — a predefined bundle of services. |
+| **Scope dimensions** | **MSS Code** (one code = one bundle). |
+| **What the user selects** | The Master Service Set they need (from `SAKURA.MasterServiceSet`). |
+| **Stored in** | `PermissionHeader` (RequestType=7) + `PermissionMSSDetail` (MSSCode). |
+| **Approvers** | From `ApproversMSS`. |
+| **Syncs to Azure AD?** | **Yes.** Request appears in `RDSecurityGroupPermission`; user is added to groups whose name contains the relevant service line (MSS is mapped to group names in the view logic) + EntireOrg. |
+| **Use case** | "I need access for the Master Service Set 'Premium Analytics Bundle'." One selection = one bundle. |
+| **Example** | User selects MSS "Premium Analytics" → system resolves which groups that MSS maps to; user is added to those groups. |
+
+```mermaid
+flowchart LR
+    A["User selects\nMSS code"] --> B["PermissionMSSDetail\nMSSCode"]
+    B --> C["RDSecurityGroupPermission view\nMSS mapped to groups"]
+    C --> D["Sync adds user to\nmatching Azure AD groups + EntireOrg"]
+```
+
+---
+
+#### 8. Samurai Permission (Dynamic / Combined)
+
+| Aspect | Detail |
+|---|---|
+| **Purpose** | **One wizard** that lets users request access **on-the-fly** by combining Organisation, Cost Center, and Client Project dimensions in a single flow. |
+| **Scope dimensions** | Can touch **Entity, Service Line, Cost Center, Client, Project** — whatever the wizard asks for in that journey. |
+| **What the user selects** | Steps through the wizard; each step can ask for Orga-, CC-, or CP-style selections. The backend still creates the underlying Orga/CC/CP request(s). |
+| **Syncs to Azure AD?** | **Depends on what was created.** If the Samurai flow creates an Orga or CC or MSS request, it syncs like that type. If it creates a CP request, it behaves like CP (no main sync view). |
+| **Use case** | "I don’t know the exact type — I just need access for my role/project." Simplifies the choice for the user. |
+| **Example** | User starts Samurai, picks Region + Service Line + Cost Center → system creates an Orga request → syncs like Orga. |
+
+---
+
+### Summary: Which Dimensions Each Type Uses
+
+```mermaid
+flowchart TB
+    subgraph ORGA_DIM["Orga (0)"]
+        O1["Entity"]
+        O2["Service Line"]
+        O3["Cost Center"]
+    end
+
+    subgraph CP_DIM["CP (1)"]
+        C1["Entity"]
+        C2["Client"]
+        C3["Project"]
+    end
+
+    subgraph CC_DIM["CC (2)"]
+        CC1["Service Line"]
+        CC2["Cost Center"]
+    end
+
+    subgraph MSS_DIM["MSS (7)"]
+        M1["MSS Code"]
+    end
+
+    subgraph RD_DIM["Reporting Deck (4)"]
+        R1["Reporting Deck"]
+    end
+
+    subgraph SGM_DIM["SGM (5)"]
+        S1["Security Group Code"]
+    end
+```
+
+| Permission Type | Entity | Service Line | Cost Center | Client / Project | MSS | Reporting Deck | Security Group Code | Syncs to Azure AD (main view)? |
+|---|---|---|---|---|---|---|---|---|
+| **Orga (0)** | ✅ | ✅ | ✅ | — | — | — | — | ✅ Yes |
+| **CP (1)** | ✅ | — | — | ✅ | — | — | — | ❌ No (EntireOrg only from main view) |
+| **CC (2)** | — | ✅ | ✅ | — | — | — | — | ✅ Yes |
+| **Reporting Deck (4)** | — | — | — | — | — | ✅ | — | ❌ No |
+| **SGM (5)** | — | — | — | — | — | — | ✅ | ❌ No |
+| **DSR (6)** | — | — | — | — | — | — | — | ❌ No |
+| **MSS (7)** | — | (via MSS) | — | — | ✅ | — | — | ✅ Yes |
+| **Samurai** | Maybe | Maybe | Maybe | Maybe | — | — | — | Depends on created type |
+
+---
+
+### Why Service Line Is So Important for Azure AD Sync
+
+- **Orga, CC, and MSS** all end up in the `RDSecurityGroupPermission` view.
+- That view decides **which Azure AD groups** a user gets by checking: *does the group’s **name** contain the request’s **ServiceLine code**?*
+- So:
+  - **Service Line** = the business line (e.g. CXM, Media).
+  - **Cost Center** = the department/budget unit (often tied to a service line).
+  - **Entity** = where in the org (region/market) — used for approval and RLS, not for group name matching.
+  - **Master Service Set** = a bundle that is mapped (in view logic) to groups that contain the right service line codes.
+
+If a user is approved but not added to a group, check: (1) Is the group’s name in `ReportingDeckSecurityGroups` containing their ServiceLine code? (2) Is `SecurityGroupGUID` set for that group?
+
+---
+
 ## PART 6 — The Full Request Lifecycle (State Machine)
 
 ```mermaid
@@ -737,6 +966,13 @@ flowchart LR
 | **Orga permission** | Organisation-scoped request (most common) — syncs to Azure AD groups |
 | **CP permission** | Client Project-scoped request — does NOT sync via main view |
 | **EntireOrg group** | `#SG-UN-SAKURA-EntireOrg` — every approved user is added here for app-level access |
+| **Entity** | Organizational unit in the hierarchy (Global → Region → Cluster → Market → Entity). Used in Orga and CP to scope by geography/structure. |
+| **Service Line** | Business capability or product line (e.g. CXM, Media). ~21 rows. Azure AD group names contain ServiceLine codes; sync view matches on this. |
+| **Cost Center** | Department or budget unit (Single, BPC Rollup, Business Unit). ~2,908 rows. Used in Orga and CC. Often filtered by Service Line in the portal. |
+| **Master Service Set (MSS)** | A named bundle of services. ~260 rows. Used only for MSS permission (RequestType 7). Syncs to Azure AD like Orga/CC. |
+| **Client** | Customer or account. ~96K rows. Used in CP (Client Project) for client-specific access. |
+| **Reporting Deck** | Logical grouping of Power BI reports. User selects a deck; each deck maps to Azure AD groups in ReportingDeckSecurityGroups. |
+| **Security Group Code** | In SGM context: a code that refers to an Azure AD group. Used for SGM permission (RequestType 5). |
 | **RLS** | Row-Level Security — Power BI feature that filters data per user based on their approved scope |
 | **Sensei** | External source system that feeds reference data (clients, entities, service lines) into Sakura |
 | **ADF** | Azure Data Factory — the pipeline that moves data from Sensei to Sakura's staging tables |
