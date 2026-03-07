@@ -75,7 +75,7 @@ REQUESTER CANCEL (any pending state)
                 RequestStatus = 6 (Cancelled)
                 OLS header    = 5 (Cancelled)     ← FINAL
 
-REVOKE (only when RequestStatus = 3):
+REVOKE (any active state: RequestStatus 0–3):
   OLS APPROVER REVOKES ──► OLS header = 4 (Revoked)
                            RequestStatus = 5 (Revoked)   ← FINAL
 ```
@@ -105,7 +105,7 @@ REQUESTER CANCEL (any pending state)
                 RequestStatus = 6 (Cancelled)
                 RLS header    = 5 (Cancelled)     ← FINAL
 
-REVOKE (only when RequestStatus = 3):
+REVOKE (any active state: RequestStatus 0–3):
   RLS APPROVER REVOKES ──► RLS header = 4 (Revoked)
                            RequestStatus = 5 (Revoked)   ← FINAL
 ```
@@ -149,14 +149,15 @@ REQUESTER CANCEL (any pending state)
                 OLS header    = 5 (Cancelled)
                 RLS header    = 5 (Cancelled)       ← FINAL
 
-REVOKE (only when RequestStatus = 3 — all headers approved):
+REVOKE (any active state: RequestStatus 0–3):
   REVOKE OLS  ──► OLS header = 4 (Revoked)
-                  RequestStatus stays 3 until ALL headers revoked
+                  RequestStatus stays until ALL non-final headers are revoked
   REVOKE RLS  ──► RLS header = 4 (Revoked)
-                  Now ALL headers = Revoked ──► RequestStatus = 5 (Revoked)  ← FINAL
+                  Now ALL headers final ──► RequestStatus = 5 (Revoked)  ← FINAL
 
-  Note: Both must be revoked to reach RequestStatus = 5.
-  Revoking only one leaves RequestStatus = 3 with one Revoked header.
+  Note: Once RequestStatus = 5, both headers are Revoked.
+  Revoking only one OLS or RLS header during a pending state is valid;
+  the request becomes Revoked (5) when all remaining headers are also in a final state.
 ```
 
 ---
@@ -199,9 +200,12 @@ Legend: ✅ allowed | ❌ blocked | — not applicable to this role
 |---------------|-------------------|--------|--------|--------------------|
 | 1 PendingOLS | 1 Pending | **Approve OLS** | OLS→Approved, next: PendingRLS (2) or Approved (3) | ✅ allowed |
 | 1 PendingOLS | 1 Pending | **Reject OLS** | OLS→Rejected, Request→Rejected (4) | ✅ allowed |
+| 0 PendingLM | 0 NotStarted | **Revoke OLS** | OLS→Revoked; Request→Revoked (5) if all headers final | ✅ allowed |
+| 1 PendingOLS | 1 Pending | **Revoke OLS** | OLS→Revoked; Request→Revoked (5) if all headers final | ✅ allowed |
+| 2 PendingRLS | 2 Approved | **Revoke OLS** | OLS→Revoked; Request→Revoked (5) if all headers final | ✅ allowed |
+| 3 Approved | 2 Approved | **Revoke OLS** | OLS→Revoked; Request→Revoked (5) if all headers final | ✅ allowed |
 | 0 PendingLM | 0 NotStarted | Approve OLS | ❌ blocked | `ValidateStage` fails — not this stage |
-| 2 PendingRLS | 2 Approved | Approve OLS | ❌ blocked | OLS already decided |
-| 3 Approved | 2 Approved | **Revoke OLS** | OLS→Revoked (4); Request→Revoked (5) if all headers revoked | ✅ allowed |
+| 2 PendingRLS | 2 Approved | Approve / Reject OLS | ❌ blocked | `ValidateStage` fails — not this stage |
 | 3 Approved | 2 Approved | Approve / Reject OLS | ❌ blocked | `ValidateStage` fails — not pending |
 | 4/5/6 | 3/4/5 | Any | ❌ blocked | Stage validation or status guard |
 
@@ -213,9 +217,12 @@ Legend: ✅ allowed | ❌ blocked | — not applicable to this role
 |---------------|-------------------|--------|--------|--------------------|
 | 2 PendingRLS | 1 Pending | **Approve RLS** | RLS→Approved, Request→Approved (3) | ✅ allowed |
 | 2 PendingRLS | 1 Pending | **Reject RLS** | RLS→Rejected, Request→Rejected (4) | ✅ allowed |
+| 0 PendingLM | 0 NotStarted | **Revoke RLS** | RLS→Revoked; Request→Revoked (5) if all headers final | ✅ allowed |
+| 1 PendingOLS | 0 NotStarted | **Revoke RLS** | RLS→Revoked; Request→Revoked (5) if all headers final | ✅ allowed |
+| 2 PendingRLS | 1 Pending | **Revoke RLS** | RLS→Revoked; Request→Revoked (5) if all headers final | ✅ allowed |
+| 3 Approved | 2 Approved | **Revoke RLS** | RLS→Revoked; Request→Revoked (5) if all headers final | ✅ allowed |
 | 0 PendingLM | 0 NotStarted | Approve RLS | ❌ blocked | `ValidateStage` fails — not this stage |
 | 1 PendingOLS | 0 NotStarted | Approve RLS | ❌ blocked | `ValidateStage` fails — not this stage |
-| 3 Approved | 2 Approved | **Revoke RLS** | RLS→Revoked (4); Request→Revoked (5) if all headers revoked | ✅ allowed |
 | 3 Approved | 2 Approved | Approve / Reject RLS | ❌ blocked | `ValidateStage` fails — not pending |
 | 4/5/6 | 3/4/5 | Any | ❌ blocked | Stage validation or status guard |
 
@@ -273,8 +280,11 @@ All endpoints: `POST https://localhost:7238/api/PermissionRequest/{id}/{action}`
 | C2 | LM approves | Line Manager | 1 PendingOLS | 1 Pending | 0 NotStarted |
 | C3 | OLS approves | OLS Approver | 2 PendingRLS | 2 Approved | 1 Pending |
 | C4 | RLS approves | RLS Approver | 3 Approved | 2 Approved | 2 Approved |
-| C5 | OLS approver revokes | OLS Approver | 3 Approved (unchanged) | 4 Revoked | 2 Approved |
-| C6 | RLS approver revokes | RLS Approver | 5 Revoked | 4 Revoked | 4 Revoked |
+| C5 | OLS approver revokes | OLS Approver | 5 Revoked (all headers final) | 4 Revoked | 4 Revoked |
+
+> **Note:** In OLS+RLS, once OLS is revoked the request goes Revoked (5) immediately because both headers are then in a final state (OLS=Revoked, RLS=NotStarted/still pending). If you want to test revoking mid-flow, revoke whichever header your role covers; the request reaches Revoked (5) when all headers are in a final state.
+
+| C6 | (Alternative) RLS approver revokes first | RLS Approver | 5 Revoked | 0/1 NotStarted/Pending | 4 Revoked |
 
 ---
 
@@ -334,9 +344,11 @@ All endpoints: `POST https://localhost:7238/api/PermissionRequest/{id}/{action}`
 | H4 | OLS approve | Status = 2 PendingRLS | Stage validation fails |
 | H5 | RLS approve | Status = 0 PendingLM | Stage validation fails |
 | H6 | RLS approve | Status = 1 PendingOLS | Stage validation fails |
-| H7 | Revoke OLS | Status = 1 PendingOLS (not yet approved) | "Only approved requests can be revoked" |
-| H8 | Revoke RLS | Status = 4 Rejected | "Only approved requests can be revoked" |
-| H9 | Revoke with blank reason | Status = 3 Approved | "Revoke reason is mandatory" |
+| H7 | Revoke OLS/RLS | Status = 4 Rejected | ❌ "Request cannot be revoked in its current state" |
+| H8 | Revoke OLS/RLS | Status = 5 Revoked | ❌ "Request cannot be revoked in its current state" |
+| H9 | Revoke OLS/RLS | Status = 6 Cancelled | ❌ "Request cannot be revoked in its current state" |
+| H10 | Revoke with blank reason | Any active state | ❌ "Revoke reason is mandatory" |
+| H11 | Revoke a header already Revoked/Rejected/Cancelled | Any | ❌ "This permission header is already in a final state" |
 
 ---
 
