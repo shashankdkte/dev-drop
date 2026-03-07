@@ -133,12 +133,12 @@ LM APPROVE ──►  RequestStatus = 1 (PendingOLS)   ← OLS goes first
                     RLS header    = 2 (Approved)    ← FINAL (access granted)
 
     RLS REJECT  ──► RequestStatus = 4 (Rejected)
-                    OLS header    = 2 (Approved)    ← already approved, stays
+                    OLS header    = 3 (Rejected)    ← also set ("Rejected due to RLS rejection")
                     RLS header    = 3 (Rejected)    ← FINAL
 
   OLS REJECT  ──► RequestStatus = 4 (Rejected)
                   OLS header    = 3 (Rejected)
-                  RLS header    = 3 (Rejected)      ← both marked rejected, FINAL
+                  RLS header    = 3 (Rejected)    ← also set ("Rejected due to OLS rejection"), FINAL
 
 LM REJECT  ──►  RequestStatus = 4 (Rejected)
                 OLS header    = 3 (Rejected)
@@ -199,7 +199,7 @@ Legend: ✅ allowed | ❌ blocked | — not applicable to this role
 | Request Status | OLS Header Status | Action | Result | Backend validation |
 |---------------|-------------------|--------|--------|--------------------|
 | 1 PendingOLS | 1 Pending | **Approve OLS** | OLS→Approved, next: PendingRLS (2) or Approved (3) | ✅ allowed |
-| 1 PendingOLS | 1 Pending | **Reject OLS** | OLS→Rejected, Request→Rejected (4) | ✅ allowed |
+| 1 PendingOLS | 1 Pending | **Reject OLS** | OLS→Rejected, RLS→Rejected, Request→Rejected (4) | ✅ allowed |
 | 0 PendingLM | 0 NotStarted | **Revoke OLS** | OLS→Revoked; Request→Revoked (5) if all headers final | ✅ allowed |
 | 1 PendingOLS | 1 Pending | **Revoke OLS** | OLS→Revoked; Request→Revoked (5) if all headers final | ✅ allowed |
 | 2 PendingRLS | 2 Approved | **Revoke OLS** | OLS→Revoked; Request→Revoked (5) if all headers final | ✅ allowed |
@@ -216,7 +216,7 @@ Legend: ✅ allowed | ❌ blocked | — not applicable to this role
 | Request Status | RLS Header Status | Action | Result | Backend validation |
 |---------------|-------------------|--------|--------|--------------------|
 | 2 PendingRLS | 1 Pending | **Approve RLS** | RLS→Approved, Request→Approved (3) | ✅ allowed |
-| 2 PendingRLS | 1 Pending | **Reject RLS** | RLS→Rejected, Request→Rejected (4) | ✅ allowed |
+| 2 PendingRLS | 1 Pending | **Reject RLS** | OLS→Rejected, RLS→Rejected, Request→Rejected (4) | ✅ allowed |
 | 0 PendingLM | 0 NotStarted | **Revoke RLS** | RLS→Revoked; Request→Revoked (5) if all headers final | ✅ allowed |
 | 1 PendingOLS | 0 NotStarted | **Revoke RLS** | RLS→Revoked; Request→Revoked (5) if all headers final | ✅ allowed |
 | 2 PendingRLS | 1 Pending | **Revoke RLS** | RLS→Revoked; Request→Revoked (5) if all headers final | ✅ allowed |
@@ -316,8 +316,8 @@ All endpoints: `POST https://localhost:7238/api/PermissionRequest/{id}/{action}`
 | F1 | Submit OLS+RLS request | Requester | 0 PendingLM | 0 NotStarted | 0 NotStarted |
 | F2 | LM approves | Line Manager | 1 PendingOLS | 1 Pending | 0 NotStarted |
 | F3 | OLS approves | OLS Approver | 2 PendingRLS | 2 Approved | 1 Pending |
-| F4 | RLS rejects | RLS Approver | 4 Rejected | 2 Approved | 3 Rejected |
-| F5 | Try OLS revoke (not Approved) | OLS Approver | ❌ 400 — "Only approved requests can be revoked" | unchanged | unchanged |
+| F4 | RLS rejects | RLS Approver | 4 Rejected | 3 Rejected | 3 Rejected |
+| F5 | Try OLS revoke (request Rejected) | OLS Approver | ❌ 400 — "Request cannot be revoked in its current state" | unchanged | unchanged |
 
 ---
 
