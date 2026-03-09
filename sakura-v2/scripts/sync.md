@@ -372,6 +372,32 @@ The script writes per-user `GroupMemberAdded`/`GroupMemberRemoved` events to `db
 
 ## Timing Estimates
 
+### Batching Logic — Script vs Power Automate
+
+#### Script — batching
+
+| Operation | Batching | Details |
+|-----------|-----------|---------|
+| **Add members** | **Yes — fixed batch size** | One Graph API call adds **up to 20 members** via `Update-MgGroup` with `members@odata.bind` (array of directory object URLs). The script loops in chunks of 20. So 100 adds = 5 API calls, not 100. |
+| **Remove members** | **No** | Graph API has no bulk-remove endpoint. One `Remove-MgGroupMemberByRef` call per user. 100 removes = 100 API calls. Optional: add a small delay between removes to avoid throttling (e.g. 100 ms). |
+| **List group members** | **Yes — automatic pagination** | `Get-MgGroupMemberAsUser -All` pages through all results (typically 100 per page). One logical operation; the module handles pagination. No explicit batching in your code. |
+| **User resolution (email → Object ID)** | **No** | One `Get-MgUser` call per distinct email. Could be optimized later with batch request (JSON batching) if needed. |
+
+**Net effect:** Adds are fast at scale (20× fewer calls). Removes and user resolution are linear in member count.
+
+#### Power Automate — batching
+
+| Operation | Batching | Details |
+|-----------|----------|---------|
+| **Add members** | **No** | Each "Add member to group" action = one connector call = one Graph API call. 100 adds = 100 flow iterations and 100 API calls. There is no built-in "add up to 20" action. |
+| **Remove members** | **No** | Each "Remove member from group" action = one connector call. 100 removes = 100 iterations. |
+| **List group members** | **Depends** | The Office 365 Groups "List group members" action returns one response. Graph typically returns a **single page** (e.g. first 100–999 members). To get all members for large groups you must implement **pagination** yourself (e.g. "Do until" loop, nextLink, append to array). No automatic "-All" equivalent. |
+| **Filter / compare (diff)** | **N/A** | "Filter array" runs in the flow engine on in-memory arrays. No batching; large arrays (e.g. 10,000+ items) can be slow or hit expression size limits. |
+
+**Net effect:** Every add and every remove is one action and one API call. At scale, flow run length and iteration count grow linearly with member count. List members for large groups requires custom pagination logic.
+
+---
+
 ### Power Automate — Time per User
 
 Each **remove** and each **add** in Power Automate is one flow action that calls the Graph/Office 365 connector. Measured in real runs and typical connector latency:
@@ -384,6 +410,25 @@ Each **remove** and each **add** in Power Automate is one flow action that calls
 **Rough rule of thumb:** **~1.5 seconds per user** per operation (remove or add).  
 So for **1,000 users**: remove all ≈ **25 min**, add all ≈ **25 min** → **~50 min** total for full replace.  
 At **10,000 users**: **~8+ hours** (often hits flow run timeout).
+
+---
+
+### Power Automate — Diff-Based Time per Group (1% change)
+
+Same ~1.5 s per user for each remove/add. Plus: "List group members" (one or more actions; pagination may be needed) and "Filter array" to compute to-add / to-remove. Filter time grows with group size (large arrays = slower).
+
+| Members in group | List + filter (est.) | Removes (1%) | Adds (1%) | **Total per group** |
+|------------------|----------------------|--------------|-----------|----------------------|
+| 10 | ~5 s | ~2 s | ~2 s | **~9 s** |
+| 50 | ~15 s | ~8 s | ~8 s | **~31 s** |
+| 100 | ~30 s | ~15 s | ~15 s | **~1 min** |
+| 500 | ~2 min | ~1.3 min | ~1.3 min | **~4.5 min** |
+| 1,000 | ~4 min | ~2.5 min | ~2.5 min | **~9 min** |
+| 5,000 | ~15 min (pagination + filter) | ~12 min | ~12 min | **~39 min** (timeout risk) |
+| 10,000 | **Pagination + large filter** | ~25 min | ~25 min | **Timeout / limit** |
+| 50,000 | **Not practical** | — | — | **Timeout / limit** |
+
+*Diff-based in Power Automate still does one action per add and per remove; only the *count* of adds/removes is lower. List and filter at 5k+ become slow or hit limits.*
 
 ---
 
@@ -458,13 +503,23 @@ For **multiple groups**, add per-group time; user resolution stays once per run.
 
 ### Summary: Script vs Power Automate (time)
 
-| Members | Power Automate (full replace) | Script (full replace) | Script (diff, 1% change) |
-|---------|-------------------------------|-----------------------|---------------------------|
-| 10 | ~30 s | ~7 s | ~2 s |
-| 100 | ~5 min | ~1.1 min | ~9 s |
-| 1,000 | ~50 min (often timeout risk) | ~11 min | ~1.2 min |
-| 10,000 | **Timeout** (8+ h needed) | ~2 h | ~11 min |
-| 50,000 | **Timeout** | ~9 h | ~56 min (+ user resolution) |
+All four approaches, with member counts 10 through 50,000. Times are per group (single group of that size). **Power Automate (diff)** still uses one action per add/remove, so time scales with 1% of members; list + filter time grows with full group size.
+
+| Members | Power Automate (full replace) | Power Automate (diff, 1% change) | Script (full replace) | Script (diff, 1% change) |
+|---------|-------------------------------|----------------------------------|------------------------|--------------------------|
+| 10 | ~30 s | ~9 s | ~7 s | ~2 s |
+| 50 | ~2.5 min | ~31 s | ~32 s | ~5 s |
+| 100 | ~5 min | ~1 min | ~1.1 min | ~9 s |
+| 500 | ~25 min | ~4.5 min | ~5.3 min | ~35 s |
+| 1,000 | ~50 min (timeout risk) | ~9 min | ~11 min | ~1.2 min |
+| 5,000 | **Timeout** (4+ h) | ~39 min (timeout risk) | ~53 min | ~6 min |
+| 10,000 | **Timeout** | **Timeout / limit** | ~2 h | ~11 min |
+| 50,000 | **Timeout** | **Timeout / limit** | ~9 h | ~56 min (+ user resolution) |
+
+- **Power Automate full replace:** 1.5 s × 2 (remove + add) per member → linear growth; runs hit timeout at ~1k–5k.
+- **Power Automate diff:** Same per-add/remove time for only 1% of members; list + filter and iteration limits become the bottleneck at 5k+.
+- **Script full replace:** Removes 1 call per user; adds batched (20 per call) → add phase stays short.
+- **Script diff:** Only 1% add/remove calls; list + in-memory diff; adds batched → stays fast even at 50k.
 
 ---
 
