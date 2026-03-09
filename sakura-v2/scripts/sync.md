@@ -370,6 +370,104 @@ The script writes per-user `GroupMemberAdded`/`GroupMemberRemoved` events to `db
 
 ---
 
+## Timing Estimates
+
+### Power Automate — Time per User
+
+Each **remove** and each **add** in Power Automate is one flow action that calls the Graph/Office 365 connector. Measured in real runs and typical connector latency:
+
+| Operation | Time per user (typical) | Notes |
+|-----------|--------------------------|--------|
+| **Remove member from group** | **1.0 – 2.5 s** | One "RemoveMemberFromGroup" action per user. Connector + Graph API. |
+| **Add member to group** | **1.0 – 2.5 s** | One "AddMemberToGroup" action per user. Connector + Graph API. |
+
+**Rough rule of thumb:** **~1.5 seconds per user** per operation (remove or add).  
+So for **1,000 users**: remove all ≈ **25 min**, add all ≈ **25 min** → **~50 min** total for full replace.  
+At **10,000 users**: **~8+ hours** (often hits flow run timeout).
+
+---
+
+### Script — Time per Group (Table)
+
+Assumptions:
+
+- **Graph API:** ~0.4 – 0.8 s per call (average **~0.6 s**).
+- **Script:** Removes = 1 call per user; Adds = 1 call per **20 users** (batch of 20). List members = paginated, ~0.6 s per 100 members.
+- **User resolution:** Done once per run (all distinct emails). ~0.5 s per distinct user. Not repeated per group.
+- **Diff-based:** "Typical day" = only the delta (e.g. 1% of members change). "Worst day" = initial load (all members added).
+
+Times below are **per group** for that group size (one group with N members). User resolution time is **once per run** (all distinct users across all groups), not per group.
+
+#### Full replace (script): remove all + add all
+
+| Members in group | Remove all | Add all (batches of 20) | **Total per group** |
+|------------------|------------|--------------------------|----------------------|
+| 10 | ~6 s | ~1 s | **~7 s** |
+| 50 | ~30 s | ~2 s | **~32 s** |
+| 100 | ~1 min | ~3 s | **~1.1 min** |
+| 500 | ~5 min | ~15 s | **~5.3 min** |
+| 1,000 | ~10 min | ~30 s | **~11 min** |
+| 5,000 | ~50 min | ~2.5 min | **~53 min** |
+| 10,000 | ~1.7 h | ~5 min | **~2 h** |
+| 50,000 | ~8.3 h | ~25 min | **~8.8 h** |
+
+#### Diff-based (script): typical day (e.g. 1% change)
+
+Assume **1% of members** change (to remove or to add). So 100 members → 1 remove + 1 add; 10,000 → 100 removes + 100 adds.
+
+| Members in group | List current | Removes (1%) | Adds (1%, batched) | **Total per group** |
+|------------------|--------------|--------------|--------------------|----------------------|
+| 10 | &lt;1 s | ~1 s | &lt;1 s | **~2 s** |
+| 50 | ~1 s | ~3 s | ~1 s | **~5 s** |
+| 100 | ~1 s | ~6 s | ~2 s | **~9 s** |
+| 500 | ~3 s | ~30 s | ~2 s | **~35 s** |
+| 1,000 | ~6 s | ~1 min | ~3 s | **~1.2 min** |
+| 5,000 | ~30 s | ~5 min | ~3 s | **~6 min** |
+| 10,000 | ~1 min | ~10 min | ~3 s | **~11 min** |
+| 50,000 | ~5 min | ~50 min | ~15 s | **~56 min** |
+
+#### Diff-based (script): no changes (0% delta)
+
+| Members in group | List current + compare | Removes | Adds | **Total per group** |
+|------------------|------------------------|----------|------|----------------------|
+| Any size | ~1–5 min (list + in-memory diff) | 0 | 0 | **~1–5 min** (no Graph writes) |
+
+#### User resolution (script, once per run)
+
+Resolving emails to Azure AD Object IDs: **one `Get-MgUser` per distinct user** across the whole run.
+
+| Distinct users (across all groups) | Time (sequential, ~0.5 s per user) |
+|------------------------------------|------------------------------------|
+| 10 | ~5 s |
+| 50 | ~25 s |
+| 100 | ~50 s |
+| 500 | ~4 min |
+| 1,000 | ~8 min |
+| 5,000 | ~42 min |
+| 10,000 | ~1.4 h |
+| 50,000 | ~7 h |
+
+So for **one group of 10,000 members** with **diff-based** sync:
+
+- **User resolution:** 10,000 distinct users ≈ **1.4 h** (once).
+- **Per group:** list + 1% diff ≈ **~11 min**.
+- **Total run (one group):** **~1.5 – 2 h**.  
+For **multiple groups**, add per-group time; user resolution stays once per run.
+
+---
+
+### Summary: Script vs Power Automate (time)
+
+| Members | Power Automate (full replace) | Script (full replace) | Script (diff, 1% change) |
+|---------|-------------------------------|-----------------------|---------------------------|
+| 10 | ~30 s | ~7 s | ~2 s |
+| 100 | ~5 min | ~1.1 min | ~9 s |
+| 1,000 | ~50 min (often timeout risk) | ~11 min | ~1.2 min |
+| 10,000 | **Timeout** (8+ h needed) | ~2 h | ~11 min |
+| 50,000 | **Timeout** | ~9 h | ~56 min (+ user resolution) |
+
+---
+
 ## Final Recommendation for Sakura V2
 
 **Use the Diff-Based PowerShell Script (`SakuraV2ADSync.ps1`).** Always.
