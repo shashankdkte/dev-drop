@@ -523,6 +523,37 @@ All four approaches, with member counts 10 through 50,000. Times are per group (
 
 ---
 
+### Multi-Group Scenario: 50 Groups × 500 Members Each
+
+When you have **many groups** (e.g. 50) and **moderate size per group** (e.g. 500 members), total run time = **(once-per-run work)** + **(per-group time × number of groups)**.
+
+**What changes**
+
+- **Script:** User resolution runs **once** for the whole run (all distinct users across all 50 groups). Then the script loops over each group: list members, diff, remove/add. So total = user resolution + (50 × per-group time).
+- **Power Automate:** Same idea — 50 groups = 50 loop iterations; each iteration does list + filter + removes + adds for that group.
+
+**Rough totals for 50 groups × 500 members**
+
+| Approach | Per group (500 members) | × 50 groups | Plus once per run | **Total run** |
+|----------|--------------------------|-------------|--------------------|---------------|
+| **Script (diff, 1%)** | ~35 s | ~29 min | User resolution ~20–40 min (e.g. 3k–8k distinct users) | **~1 – 1.5 h** |
+| **Script (full replace)** | ~5.3 min | ~4.4 h | Same user resolution | **~5 – 5.5 h** |
+| **Power Automate (diff)** | ~4.5 min | ~3.75 h | — | **Timeout risk** |
+| **Power Automate (full replace)** | ~25 min | ~21 h | — | **Timeout** |
+
+**Which makes sense**
+
+Recommendation is unchanged: **Script (diff-based)**.
+
+- One user resolution for all users across all 50 groups.
+- Then 50 × ~35 s ≈ **30 min** of group sync for a typical 1% change day.
+- Total about **1 – 1.5 hours** depending on distinct user count.
+- No per-group “remove all” risk, no flow timeout, and EventLog per group is manageable.
+
+So with 50 groups and ~500 members each, **only total run time scales with the number of groups**; **script (diff)** remains the approach that makes sense.
+
+---
+
 ## Final Recommendation for Sakura V2
 
 **Use the Diff-Based PowerShell Script (`SakuraV2ADSync.ps1`).** Always.
