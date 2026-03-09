@@ -3,6 +3,96 @@
 
 ---
 
+## Whole flow: how every column is populated (by event)
+
+This section walks the **end-to-end flow** for each business event and shows **exactly how each column** in `Emails` gets its value.
+
+### High-level chain (every event)
+
+```
+Business event (e.g. request created, approved, rejected, …)
+  → Create*PermissionRequest / ApprovePermissionRequest / RejectPermissionRequest / RevokePermissionRequest / AppendApproverToPermissionRequest
+  → AddToEmailQueue(@EmailTemplateKey, 'PermissionHeader', @ContextId, @ContextTriggeredBy, @QueueName)
+       → FindEmailRecipients(@EmailTemplateKey, @ContextId)  →  sets @To, @CC, @BCC
+       → QueueEmail(@EmailTemplateKey, 'PermissionHeader', @ContextId, @ContextTriggeredBy, @QueueName, @To, @CC, @BCC)
+            → From/FromName from ApplicationSettings
+            → @EmailGuid = NEWID()
+            → ConstructEMail(@EmailTemplateKey, 'PermissionHeader', @ContextId, @EmailGuid)  →  @Subject, @Body from EmailTemplates + context
+            → @QueueName = COALESCE(@QueueName, fnFindAppEmailQueue(fnFindContextApp(…)), 'default')
+            → INSERT into Emails (all columns below)
+            → AddToEventLog('PermissionHeader', @ContextId, 'Notification-Created', …)
+```
+
+**ContextId** is always the **RequestId** (PermissionHeader.RequestId). **ContextEntityName** is always **'PermissionHeader'** in these flows.
+
+### Step 1: Who calls AddToEmailQueue and with what
+
+| Event | Stored procedure | EmailTemplateKey | ContextId | ContextTriggeredBy | QueueName |
+|-------|------------------|------------------|-----------|--------------------|-----------|
+| **Request created** (Orga/CP/MSS/SGM) | CreateOrgaPermissionRequest, CreateCPPermissionRequest, CreateMSSPermissionRequest, CreateSGMPermissionRequest | Requester: `APP-RYRC-{RequestType}` (e.g. APP-RYRC-Orga). Approvers: `APP-AWP-{RequestType}` (e.g. APP-AWP-Orga) | HeaderId (new) | RequestedBy | fnFindAppEmailQueue(ApplicationLoVId) |
+| **Request approved** | ApprovePermissionRequest | `APP-APRVED` | RequestId | ApprovedBy | fnFindAppEmailQueue(ApplicationLoVId) |
+| **Request rejected** | RejectPermissionRequest | `APP-REJCTD` | RequestId | RejectedBy | fnFindAppEmailQueue(ApplicationLoVId) |
+| **Request revoked** | RevokePermissionRequest | `APP-REVKED` | RequestId | RevokedBy | fnFindAppEmailQueue(ApplicationLoVId) |
+| **Approver appended** | AppendApproverToPermissionRequest | `APP-AWP-NEWAPPROVER` | RequestId | AppendedBy | fnFindAppEmailQueue(ApplicationLoVId) |
+
+So **EmailTemplateKey**, **ContextEntityName** (= 'PermissionHeader'), **ContextId** (= RequestId), **ContextTriggeredBy**, and **QueueName** are set by the caller and passed through into the Emails row.
+
+### Step 2: FindEmailRecipients — how To, CC, BCC are set
+
+FindEmailRecipients reads **PermissionHeader** for that **ContextId** (RequestId) and, based on **EmailTemplateKey**, sets To/CC/BCC:
+
+| EmailTemplateKey (group) | To | CC | BCC |
+|-------------------------|----|----|-----|
+| `APP-AWP-ORGA`, `APP-AWP-CC`, `APP-AWP-CP`, `APP-AWP-SGM` (awaiting approval) | Approvers | NULL | NULL |
+| `APP-RYRC-ORGA`, `APP-RYRC-CC`, `APP-RYRC-CP`, `APP-RYRC-SGM` (request received) | RequestedFor | RequestedBy (if ≠ RequestedFor) | NULL |
+| `APP-APRVED`, `APP-REJCTD` (approved/rejected) | RequestedFor | RequestedBy (if ≠ RequestedFor) | NULL |
+| `APP-REVKED` (revoked) | RequestedFor | LastChangedBy | NULL |
+| `APP-AWP-NEWAPPROVER` (new approver) | From EventLog: last "ApproverAppended" for this RequestId, parse "X is appended…" → To = X | NULL | NULL |
+| (any other) | AdminEmail (app setting) | NULL | NULL |
+
+So **To**, **CC**, **BCC** come from **FindEmailRecipients** (PermissionHeader + EventLog for NEWAPPROVER).
+
+### Step 3: QueueEmail — how the rest of the row is set
+
+Inside **QueueEmail**:
+
+| Column | Set in QueueEmail as |
+|--------|----------------------|
+| **From** | `fnAppSettingValue('DefaultEmailFrom')` or `'sakura@dentsu.com'` |
+| **FromName** | `fnAppSettingValue('DefaultEmailFromName')` or `'Sakura'` |
+| **To, CC, BCC** | From AddToEmailQueue (FindEmailRecipients). If To NULL → `fnAppSettingValue('AdminEmail')`. |
+| **Subject** | **ConstructEMail** output. If NULL → `'[SakuraUnk]: Email Notification'`. |
+| **Body** | **ConstructEMail** output. If NULL → admin message. |
+| **DateCreated** | `GETDATE()` |
+| **DateSent** | Not set on insert (NULL). Set later by sender. |
+| **StatusText** | `'Ready For Dispatch'` or `'Skipped due to App Settings'` if EmailingMode = '0'. |
+| **Status** | 0 (or 3 if EmailingMode = '0') |
+| **NumberOfTries** | 0 |
+| **LastTrialDate** | Not set on insert (NULL). Updated by sender. |
+| **EmailTemplateKey** | Passed in from AddToEmailQueue. |
+| **ContextEntityName** | Passed in (`'PermissionHeader'`). |
+| **ContextId** | Passed in (RequestId). |
+| **EmailGuid** | `NEWID()` inside QueueEmail. |
+| **QueueName** | Passed in, or fnFindAppEmailQueue(fnFindContextApp(…)), or `'default'`. If EmailingMode = '0', suffix `'-Skip'`. |
+
+**ConstructEMail** reads **EmailTemplates** by **EmailTemplateKey** and context tables by **ContextId**, replaces placeholders, returns **Subject** and **Body**.
+
+### Step 4: Request creation example — two rows
+
+**Request created (e.g. CreateOrgaPermissionRequest):**
+
+1. Procedure inserts PermissionHeader → **HeaderId**, AddToEventLog('Created').
+2. **First email (to requester):** AddToEmailQueue(EmailTemplateKey = `APP-RYRC-Orga`, ContextId = **HeaderId**, ContextTriggeredBy = **RequestedBy**, …). FindEmailRecipients → To = **RequestedFor**, CC = **RequestedBy**. QueueEmail → From/FromName from app settings, EmailGuid = NEWID(), ConstructEMail → Subject/Body from template APP-RYRC-Orga + PermissionHeader/Orga detail, INSERT. **Row:** EmailId, From, FromName, To=RequestedFor, CC=RequestedBy, Subject/Body from template, DateCreated=now, DateSent=NULL, Status=0, StatusText='Ready For Dispatch', NumberOfTries=0, LastTrialDate=NULL, EmailTemplateKey=APP-RYRC-Orga, ContextEntityName=PermissionHeader, ContextId=HeaderId, EmailGuid, QueueName.
+3. **Second email (to approvers), if not auto-approved:** AddToEmailQueue(EmailTemplateKey = `APP-AWP-Orga`, ContextId = **HeaderId**, …). FindEmailRecipients → To = **Approvers**, CC/BCC = NULL. Same QueueEmail flow. **Row:** Same pattern, To=Approvers, EmailTemplateKey=APP-AWP-Orga.
+
+**Approval / Rejection / Revoke / Append approver:** Same chain; only EmailTemplateKey and ContextTriggeredBy change; FindEmailRecipients sets To/CC/BCC per Step 2 table.
+
+### Step 5: After insert — sender process
+
+A **sender** (job or service) reads **EmailsToSend** (Status 0/1, retry rules, queue active). It sends the email then updates: **DateSent**, **Status** (2 or 3), **StatusText**, **NumberOfTries**, **LastTrialDate**. So those columns are **not** set on request creation/approval; they are set when the email is actually sent or retried.
+
+---
+
 ## 1. V1 — Table: `dbo.Emails`
 
 The **Emails** table is the outbound email queue. Rows are inserted by `QueueEmail` (or `AddToEmailQueue` → `QueueEmail`). A separate sender process (e.g. job or service) reads rows where `Status = 0` or `1`, sends the email, then updates `Status`, `DateSent`, `NumberOfTries`, `LastTrialDate`, `StatusText`.
