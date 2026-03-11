@@ -305,3 +305,74 @@ So:
 ---
 
 *Document version: 1.0 | Aligned with Ronin Mental Model and Senior Guide (staging → enhancement → views).*
+
+---
+
+# Simplest bullet points
+
+## What / Why / How (one line each)
+
+- **Industry Hierarchy**
+  - What: One master of industry (GICS 1–4 + manual), with Parent, Child, Source (Semarchy or Manual).
+  - Why: So procurement has one agreed structure; GICS alone wasn’t enough.
+  - How: New Ronin page: pick level, see Parent/Child/Source; only Manual rows editable; "Short cut to add to Hierarchy."
+
+- **Stakeholder → Industry**
+  - What: Each stakeholder has default industry (from Client Master) + optional Override GICS; effective = override else default.
+  - Why: So vendor/client mapping and reporting can use "stakeholder's industry."
+  - How: Modify Stakeholder map page: add Override GICS; user drills through GICS to set it; reporting uses override else default.
+
+- **Client → Industry**
+  - What: Each client has default (Client Master) + optional Override GICS; many scenarios (mastered/not, manual at level 4/3/2/1).
+  - Why: So clients have correct industry even when not in Client Master or wrong in source.
+  - How: Modify Clients to map page: add Override GICS; same drill-through; reporting uses override when present.
+
+- **Vendor → Industry**
+  - What: Each vendor has default (from client or stakeholder) + optional Override; effective = Supplier Industry = override else default.
+  - Why: So procurement can classify spend by vendor and fix wrong defaults.
+  - How: Modify Vendor to map page: add Override and Supplier Industry; drill-through; fast search/filter (e.g. 3–5 sec load).
+
+- **Invoice-level override**
+  - What: New table + page: assign industry to a specific invoice (Supplier, Invoice No., Entity, GIC1–4) so one vendor can have many industries.
+  - Why: Some spend is right only at invoice level.
+  - How: New Ronin page writes to new table; no ETL; reporting checks this table first.
+
+- **Reporting**
+  - What: One rule: use invoice override if exists, else vendor Supplier Industry, else default (stakeholder/client).
+  - Why: So every report uses the same industry and overrides are respected.
+  - How: One view (or semantic model) that joins override table + vendor + default and applies this order.
+
+## Modify vs New
+
+- **Modify:** Clients to map (add Override GICS), Vendor to map (add Override, Supplier Industry), Stakeholder map (add Override GICS, Stakeholder Industry).
+- **New:** Industry Hierarchy page (GICS + manual, Parent/Child/Source), Vendor Invoice page (invoice-level override table).
+
+## Pipeline (simplest)
+
+- **Where data comes from**
+  - GICS hierarchy: Semarchy/CPS → ETL.
+  - Client Master industry: already in Ronin (existing pipelines).
+  - Manual hierarchy + all overrides: Ronin UI only (no ETL).
+
+- **Where it goes**
+  - Semarchy GICS: ETL → Synapse_Staging.IndustryHierarchy → sp_Load_* → synapse.IndustryHierarchyEnhancements → V_IndustryHierarchyEnhancements.
+  - Manual hierarchy: Ronin UI → Ronin DB → same view (or table that feeds it).
+  - Overrides (stakeholder/client/vendor): Ronin UI → enhancement tables.
+  - Invoice override: Ronin UI → new table → reporting view.
+
+- **Layers**
+  - Staging = external data landing (Synapse_Staging.IndustryHierarchy).
+  - Enhancement = hierarchy master + stakeholder/client/vendor overrides (synapse.*).
+  - dbo (or similar) = invoice override table (+ maybe manual hierarchy).
+  - Views = what UI and reporting read.
+
+- **Who consumes**
+  - Ronin UI: all five pages read from views, write to tables.
+  - Reports: one view that resolves industry (invoice → vendor → default).
+  - Fabric: if used, Ronin → pipeline → Fabric DB → Fabric/PBI.
+
+## Order of resolution (reporting)
+
+1. Invoice-level override (if row exists for that invoice).
+2. Else Vendor Supplier Industry (override else default from client/stakeholder).
+3. Else default from stakeholder/client mapping.
