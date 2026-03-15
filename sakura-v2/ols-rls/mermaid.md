@@ -37,6 +37,39 @@ Sakura **does not enforce** either. Sakura records requests, runs approvals, sto
 
 After the view change, approved OLS for those SAR would flow into the view and the nightly sync would add/remove users to the report’s Entra group the same way it does for audiences.
 
+**Is the “WorkspaceApps → OLSMode=1 or SAR / OLSMode=0 Audience only” diagram correct?**  
+The **outcome** is correct (SAR and NotManaged → Share*.OLS; Managed Audience only → Auto.OLSGroupMemberships), but the **split is not from WorkspaceApps alone**. It is from **each approved OLS permission**:
+
+- **OLSMode** is on **WorkspaceApps** (0 = Managed, 1 = NotManaged).
+- **SAR vs Audience** is **OLSItemType** on **OLSPermissions** (0 = Standalone Report/SAR, 1 = Audience). Same as `WorkspaceReports.ReportDeliveryMethod` 1 = SAR for the report itself.
+
+So the correct logic is:
+
+| Branch | Condition (on permission + app) | Destination |
+|--------|----------------------------------|-------------|
+| **Sync-managed** | **OLSItemType = 1** (Audience) **and** app **OLSMode = 0** (Managed) | `Auto.OLSGroupMemberships` → sync script |
+| **Share (audience)** | **OLSItemType = 1** (Audience) **and** app **OLSMode = 1** (NotManaged) | `Share*.OLS` (first branch) |
+| **Share (report)** | **OLSItemType = 0** (SAR) | `Share*.OLS` (second branch; workspace must have ≥1 NotManaged app) |
+
+**Enums (single reference):**  
+- **OLSItemType:** 0 = Standalone Report (SAR), 1 = Audience.  
+- **OLSMode:** 0 = Managed, 1 = NotManaged.  
+
+So “OLSMode=1 or SAR” is a shorthand for “permissions that go to Share*.OLS” (NotManaged audiences **or** SAR); “OLSMode=0, Audience only” means “permissions that go to Auto.OLSGroupMemberships” (Managed app + Audience item type only). A more precise diagram starts from **Approved OLS permission** and branches on **OLSItemType** and (when Audience) **OLSMode** — see diagram below.
+
+```mermaid
+flowchart TB
+  subgraph Start["Approved OLS permission"]
+    OLS["OLSPermissions row<br/>OLSItemType = 0 or 1"]
+  end
+
+  OLS --> Type{"OLSItemType?"}
+  Type -->|"0 = SAR<br/>(Standalone Report)"| Share["Share*.OLS views<br/>(SAR branch)"]
+  Type -->|"1 = Audience"| App{"App's OLSMode?"}
+  App -->|"0 = Managed"| Auto["Auto.OLSGroupMemberships<br/>→ sync script"]
+  App -->|"1 = NotManaged"| Share2["Share*.OLS views<br/>(Audience branch)"]
+```
+
 **In Sakura V2, are users added to app or audience or both?**  
 **Audience only.** The sync script reads `Auto.OLSGroupMemberships`, which uses **`AppAudiences.AudienceEntraGroupUID`** only. It does **not** use `WorkspaceApps.AppEntraGroupUID` (the app-level group). So for Managed OLS in V2, users are added to the **audience** Entra group(s) they are approved for, not to the app-level group. If an app has an `AppEntraGroupUID`, that group is not populated by Sakura sync — it would be maintained separately (e.g. manually or by another process).
 
