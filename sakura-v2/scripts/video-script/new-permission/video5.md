@@ -41,6 +41,58 @@
 
 ---
 
+## 5b. Request states diagram – all states and paths
+
+Show this diagram on screen or use it in documentation. It shows every possible state and every path (who can move the request to the next state).
+
+```mermaid
+flowchart TB
+  Start([Submit request]) --> PendingLM["Pending LM"]
+  PendingLM -->|LM Reject| Rejected["Rejected"]
+  PendingLM -->|Requester Cancel| Cancelled["Cancelled"]
+  PendingLM -->|LM Approve<br/>OLS or Combined| PendingOLS["Pending OLS"]
+  PendingLM -->|LM Approve<br/>RLS only| PendingRLS["Pending RLS"]
+
+  PendingOLS -->|OLS Reject| Rejected
+  PendingOLS -->|OLS Revoke| Revoked["Revoked"]
+  PendingOLS -->|Requester Cancel| Cancelled
+  PendingOLS -->|OLS Approve<br/>combined| PendingRLS
+  PendingOLS -->|OLS Approve<br/>OLS only| Approved["Approved"]
+
+  PendingRLS -->|RLS Reject| Rejected
+  PendingRLS -->|RLS Revoke| Revoked
+  PendingRLS -->|Requester Cancel| Cancelled
+  PendingRLS -->|RLS Approve| Approved
+
+  Approved -->|Approver Revoke| Revoked
+
+  classDef final fill:#e8f4ea,stroke:#2e7d32
+  class Rejected,Revoked,Cancelled,Approved final
+```
+
+**Legend**
+
+| From state    | Action             | To state   |
+|---------------|--------------------|------------|
+| Pending LM    | LM Reject          | Rejected   |
+| Pending LM    | Requester Cancel   | Cancelled |
+| Pending LM    | LM Approve (OLS or Combined) | Pending OLS |
+| Pending LM    | LM Approve (RLS only) | Pending RLS |
+| Pending OLS   | OLS Reject         | Rejected   |
+| Pending OLS   | OLS Revoke         | Revoked    |
+| Pending OLS   | Requester Cancel   | Cancelled |
+| Pending OLS   | OLS Approve (combined) | Pending RLS |
+| Pending OLS   | OLS Approve (OLS only) | Approved   |
+| Pending RLS   | RLS Reject         | Rejected   |
+| Pending RLS   | RLS Revoke         | Revoked    |
+| Pending RLS   | Requester Cancel   | Cancelled |
+| Pending RLS   | RLS Approve        | Approved   |
+| Approved      | Approver Revoke    | Revoked    |
+
+**Final states** (no further transitions): **Approved**, **Rejected**, **Revoked**, **Cancelled**.
+
+---
+
 ## 6. Governance recap (≈25 s)
 
 - "This workflow gives you **controlled** access—every request goes through defined approvers. It's **auditable**—you can see who requested what, who approved or rejected, and when. And it's **governed**—Line Manager first, then OLS or RLS approvers, with no bypass. Requesters use **New permission request**; they track requests in **My requests** and open **View details** for the full picture. Approvers use **My approvals** with **Pending** and **History**, filter by **Line Manager**, **OLS Approver**, or **RLS Approver**, and use **Approve**, **Reject**, or **Revoke** as appropriate."
