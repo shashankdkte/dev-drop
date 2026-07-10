@@ -1,3 +1,4 @@
+```mermaid
 graph TD
 
 ROOT["📦 Project Root"]
@@ -255,3 +256,5 @@ ENV --> PROD["environment.prod.ts"]
 ENV --> STAGING["environment.staging.ts"]
 ENV --> QA["environment.qa.ts"]
 ENV --> LOCAL["environment.local.ts"]
+
+```
