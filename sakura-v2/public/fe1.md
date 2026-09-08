@@ -57,31 +57,48 @@ flowchart TB
 
 These three replace VPN as the main gate for Option B.
 
-| Control | Meaning | Status today | Action |
-|---------|---------|--------------|--------|
-| **Entra login** | User signs in with Microsoft / Dentsu account | **HAVE** — already works (incl. MFA on VPN path) | Keep |
-| **Assignment** | Only listed users/groups can use Enterprise app **Sakura** | **HAVE partially** — `Assignment required = Yes`; assignee list is small | **NEED** — add the right groups before broad public FE |
-| **Conditional Access (CA)** | Extra rules (MFA, compliant device, location, etc.) | **NEED confirm** — MFA exists at sign-in; CA policies for this app not fully evidenced | **NEED** — InfoSec confirm/export CA for app `e73f4528-2ceb-40e3-8e4a-d72287adb4c5` |
-| **My Apps tile** | App visible in `myapplications.microsoft.com` | **NEED** — `Visible to users?` is typically **No** today | Optional later — turn **Yes** when Product wants the tile |
+**Source:** `AD/ADFinal/Get-SakuraEntraAppSecurityInventory-Delegated.ps1` run `20260908-141347` (tenant `6e8992ec-76d5-4ea5-8eae-b0c5e558749a`).
+
+| Control | Meaning | Status from inventory | Action |
+|---------|---------|----------------------|--------|
+| **Entra login** | User signs in with Dentsu account | **HAVE** — app **Sakura** `e73f4528-2ceb-40e3-8e4a-d72287adb4c5`; `SignInAudience = AzureADMyOrg` | Keep |
+| **SPA redirect URIs** | FE can complete login | **HAVE** — Dev `orange-sand-…`, UAT `lemon-wave-…`, Prod `green-stone-…` all registered | Keep |
+| **Assignment required** | Only assigned users can use the enterprise app | **NEED fix** — inventory shows `AppRoleAssignmentRequired = False` | **Set to True** before public FE |
+| **Assigned users/groups** | Who is allowed | **Weak today** — only **2 users** (Abhinav Tyagi, Onur Oeztuerk); no groups | **NEED** — add Sakura user groups |
+| **Conditional Access (CA)** | MFA / device / location rules on this app | **UNKNOWN** — script lacked `Policy.Read.All` (Forbidden) | **NEED** — re-run with CA scope, or ask InfoSec for CA export |
+| **My Apps tile** | Visible in My Apps | **NEED later** — `HideApp` present; `MyAppsVisibleToUsers = False` | Optional — remove HideApp / set Visible = Yes when Product wants tile |
+| **API JWT** | API rejects anonymous calls | **HAVE** (app design; not from this Graph export) | Keep |
 
 ```mermaid
 flowchart TB
-  H1[HAVE - Entra app Sakura + login]
-  H1 --> H2[HAVE - MFA at sign-in]
-  H2 --> H3[HAVE - Assignment required = Yes]
-  H3 --> H4[HAVE - API requires Entra JWT]
-  H4 --> N1[NEED - Expand Users and groups]
-  N1 --> N2[NEED - Confirm Conditional Access]
-  N2 --> N3[NEED - InfoSec approval to open FE]
-  N3 --> N4[NEED optional - My Apps Visible = Yes]
-  N4 --> Done[Option B ready for audit]
+  H1[HAVE - Entra app Sakura + org-only sign-in]
+  H1 --> H2[HAVE - SPA redirects Dev UAT Prod]
+  H2 --> H3[HAVE - login works today on VPN]
+  H3 --> N1[NEED - Assignment required = True]
+  N1 --> N2[NEED - Assign real user groups]
+  N2 --> N3[NEED - Confirm Conditional Access]
+  N3 --> N4[NEED - InfoSec approval to open FE]
+  N4 --> N5[NEED optional - My Apps Visible = Yes]
+  N5 --> Done[Option B ready for audit]
 ```
 
 **Simple read:**
 
-- You **already have** Entra login + MFA + JWT on API + assignment switch on.
-- You **still need** InfoSec OK, prove/fix CA for the app, and assign the right people/groups.
-- My Apps tile is **extra** — not required for the app to work without VPN.
+- Login plumbing is **ready** (app + SPA URIs for all envs).
+- Assignment gate is **not** ready for public FE: required is **False**, only 2 people listed.
+- CA is **not proven yet** (permission missing on the inventory run).
+- My Apps tile is **off** — fine until you want the tile.
+
+### Inventory highlights (for audit folder)
+
+| Field | Value |
+|-------|--------|
+| App | Sakura / `e73f4528-2ceb-40e3-8e4a-d72287adb4c5` |
+| SP object id | `faeacbe2-e6f7-453d-81b4-c0f1d691b565` |
+| Assignment required | **False** ← fix for Option B |
+| Assignees | 2 users only |
+| My Apps visible | **False** (`HideApp`) |
+| CA export | Skipped — need `Policy.Read.All` |
 
 ---
 
@@ -238,13 +255,14 @@ Build a **public gateway** so traffic becomes:
 | # | Evidence | HAVE / NEED |
 |---|----------|-------------|
 | 1 | InfoSec approval for public FE | NEED |
-| 2 | Enterprise app **Sakura** overview (`e73f4528-2ceb-40e3-8e4a-d72287adb4c5`) | HAVE (screenshot) |
-| 3 | Assignment required = Yes + Users/groups list | HAVE switch / NEED expand groups |
-| 4 | Conditional Access export for this app | NEED confirm |
+| 2 | Enterprise app **Sakura** overview (`e73f4528-…`) | HAVE (inventory + portal) |
+| 3 | Assignment required = **True** + Users/groups | NEED — today **False** + only 2 users |
+| 4 | Conditional Access export for this app | NEED — re-run inventory with `Policy.Read.All` or InfoSec |
 | 5 | SQL private (`azeuw1psenmastersvrdb01` Prod) | HAVE pattern |
 | 6 | CORS = env FE origin only | Confirm |
 | 7 | Test: VPN **off** → login → API call works | NEED after FE opened |
-| 8 | My Apps Visible = Yes | Optional NEED later |
+| 8 | My Apps Visible = Yes | Optional NEED later (today False / HideApp) |
+| 9 | SPA redirects Dev/UAT/Prod | HAVE (inventory) |
 
 ### Rollout order
 
