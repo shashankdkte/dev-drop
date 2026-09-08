@@ -3,10 +3,10 @@
 **One fact:** Sakura is a browser SPA. The **user’s browser** calls the API. The frontend does **not** proxy API calls.
 
 ```mermaid
-flowchart LR
-  U[User browser] --> FE[Frontend SWA]
-  U --> API[Backend App Service]
-  API --> DB[(SQL)]
+flowchart TB
+  U[User browser] --> FE[1. Loads Frontend SWA]
+  FE --> API[2. Same browser calls Backend API]
+  API --> DB[3. API uses SQL]
 ```
 
 ---
@@ -24,12 +24,11 @@ flowchart LR
 | DB | Private (unchanged) |
 
 ```mermaid
-flowchart LR
-  U[User - no VPN] --> FE[FE public]
-  U --> API[API public]
-  API --> DB[(DB private)]
-  Auth[Entra + CA + assignment] -.->|gates login / who can use| FE
-  Auth -.->|JWT required on calls| API
+flowchart TB
+  S1[1. User opens FE public - no VPN needed]
+  S1 --> S2[2. Entra + CA + assignment - login / who can use]
+  S2 --> S3[3. Browser calls API public with JWT]
+  S3 --> S4[4. API talks to DB private]
 ```
 
 ### Why this is recommended
@@ -67,20 +66,15 @@ These three replace VPN as the main gate for Option B.
 
 ```mermaid
 flowchart TB
-  subgraph have [HAVE today]
-    E[Entra app Sakura + login]
-    M[MFA at sign-in]
-    A1[Assignment required = Yes]
-    J[API requires Entra JWT]
-  end
-  subgraph need [NEED before / for public FE + audit]
-    G[Expand Users and groups assignment]
-    CA[Confirm Conditional Access on Sakura app]
-    IS[InfoSec approval to open FE]
-    MY[Optional: Visible to users = Yes for My Apps]
-  end
-  have --> need
-  need --> Bdone[Option B ready for audit]
+  H1[HAVE - Entra app Sakura + login]
+  H1 --> H2[HAVE - MFA at sign-in]
+  H2 --> H3[HAVE - Assignment required = Yes]
+  H3 --> H4[HAVE - API requires Entra JWT]
+  H4 --> N1[NEED - Expand Users and groups]
+  N1 --> N2[NEED - Confirm Conditional Access]
+  N2 --> N3[NEED - InfoSec approval to open FE]
+  N3 --> N4[NEED optional - My Apps Visible = Yes]
+  N4 --> Done[Option B ready for audit]
 ```
 
 **Simple read:**
@@ -98,12 +92,17 @@ flowchart TB
 Keep **everything on VPN**: FE private + API private + DB private.
 
 ```mermaid
-flowchart LR
-  U[User + VPN] --> FE[FE private]
-  U --> API[API private]
+flowchart TB
+  OK[User with VPN] --> FE[FE private]
+  FE --> API[API private]
   API --> DB[(DB private)]
-  X[No VPN] -.->|fail| FE
-  X -.->|fail| API
+```
+
+```mermaid
+flowchart TB
+  BAD[User without VPN]
+  BAD --> F1[Cannot reach FE private]
+  F1 --> F2[Cannot reach API private]
 ```
 
 | Layer | Action |
@@ -183,10 +182,10 @@ flowchart LR
 **Public FE + private API + private DB** — what people often want for “security,” but it **breaks** today’s app.
 
 ```mermaid
-flowchart LR
-  U[User no VPN] --> FE[FE public - page loads]
-  U -.->|fails| API[API private]
-  API --> DB[(DB private)]
+flowchart TB
+  U[User no VPN] --> FE[FE public - page loads OK]
+  FE --> API[API private - call fails]
+  API -.-> DB[(DB private - never reached)]
 ```
 
 ### Why it breaks
@@ -303,14 +302,13 @@ flowchart LR
 ### Decision
 
 ```mermaid
-flowchart TD
+flowchart TB
   Q1{Need Sakura without VPN / My Apps?}
   Q1 -->|No| A[Option A]
   Q1 -->|Yes| Q2{Must API stay off internet?}
   Q2 -->|No| B[Option B recommended]
   Q2 -->|Yes| C[Option C = redesign project]
 ```
-
 ### Do not
 
 | Action | Result |
