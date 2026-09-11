@@ -1,285 +1,189 @@
-# Sakura V2 — Vulnerability Assessment Host Inventory
+# Sakura V2 — Host List (Short / Straight Version)
 
-**Purpose:** Host / cloud asset list for Microsoft Defender and Wiz coverage validation.  
-**Application:** Sakura V2 (access management — OLS / RLS request & approval)  
-**Cloud provider:** Azure only (no AWS / GCP)  
-**Asset type:** Azure PaaS **+ Windows VMs** (email dispatcher / nightly AD sync)  
-**Last updated:** 2026-09-11  
-**Evidence:** Azure Portal JSON — SQL Dev/UAT; App Service Dev/UAT/Prod; Prod Key Vault; VM docs (`Complete_Setup_and_Access_Guide`, `Sakura_Email_System_Complete_Explanation`, `ARCHITECTURE.md`)
+**For:** Security · Network · Identity · Cloud  
+**Use:** Defender + Wiz coverage check  
+**Detail doc:** `Docs/SAKURA_VA_HOST_INVENTORY.md`  
+**Updated:** 2026-09-11
 
 ---
 
-## 1. How to read this list
+## 60-second picture
 
-| Field | Notes |
-|-------|--------|
-| **Hostname** | Azure resource name |
-| **FQDN** | Public or service DNS name |
-| **IP address(es)** | Private Endpoint IP where known; App Service / SQL public IPs via portal if needed |
-| **OS and version** | PaaS — Microsoft-managed host; runtime shown where known (.NET 8, Angular 20, Azure SQL v12) |
-| **Asset Owner** | From Azure resource `Owner` tag where confirmed |
+```
+User (browser)
+  → Frontend SWA  (private today via PE + VPN)
+  → Backend API   (public App Service + Entra JWT)
+  → Azure SQL     (SakuraV2 DB)
+  → Key Vault     (secrets)
 
-**Subscriptions**
+Windows VM AZEUW1PRONM01 (Prod)
+  → EmailDispatcher (~5 min) → SMTP internalsmtprelay.media.global.loc:25
+  → SakuraADSync.ps1 (nightly) → Entra Graph
+  → GAPTEQ / IIS portal (V1)
+```
 
-| Env | Subscription name (where known) | Subscription ID |
-|-----|----------------------------------|-----------------|
-| Dev / UAT (NonProd) | `VDC000006-EMEA-UK207-DenstuAegisTecUk-NetNewNonProd` | `7a659c18-04dd-412f-9cff-4b2d4e41e937` |
-| Production | (VDC000007 Prod) | `15039875-d735-4154-b944-f25aa3db1327` |
-
-**Entra (identity context — not a host)**
-
-| Item | Value |
-|------|--------|
-| Tenant ID | `6e8992ec-76d5-4ea5-8eae-b0c5e558749a` |
-| App display name | Sakura |
-| Application (client) ID | `e73f4528-2ceb-40e3-8e4a-d72287adb4c5` |
-| Service principal object ID | `faeacbe2-e6f7-453d-81b4-c0f1d691b565` |
+- **Cloud:** Azure (PaaS + **Windows VMs** for emails / nightly sync)  
+- **App:** Sakura V2 (+ V1 Toolbox still on Prod VM until full cutover)  
+- **Prod SQL:** portal export still pending (name known)
 
 ---
 
-## 1A. Windows VMs — emails + nightly scripts
+## Subscriptions (start here)
 
-| Hostname | FQDN | IP address(es) | Environment | Application / Service | Asset Owner | OS / Runtime | Cloud | Subscription ID | Resource Group | VM / Instance / Resource ID |
-|----------|------|----------------|-------------|------------------------|-------------|--------------|-------|-----------------|----------------|-----------------------------|
-| **`AZEUW1PRONM01`** | `AZEUW1PRONM01.emea.media.global.loc` | Confirm in portal | **Production** | GAPTEQ IIS portal · **EmailDispatcher** (~5 min) · **SakuraADSync.ps1** nightly (~20:31) | Confirm portal tags | **Windows Server 2019** (NT 10.0.17763) | Azure | Confirm (Prod / EMEA) | Confirm in portal | `AZEUW1PRONM01` · script `C:\Installations\SakuraADSyncer\SakuraADSync.ps1` |
-| `AZEUW1DSENM01` | `azeuw1dsenm01` / corp FQDN | Confirm | Development | Sensei Dev node; V1 portal URL `https://azeuw1dsenm01/GAPTEQForms/Sakura/` | Confirm | Windows Server (confirm) | Azure | Likely NonProd `7a659c18-…` | Confirm | `AZEUW1DSENM01` |
-| `AZEUW1DSENM02` | Confirm | Private **`10.19.54.140`** (no public IP) | Development | Sensei Dev node in `AZ-VDC000006-EUW1-NET-CORE` | Confirm | Windows Server (confirm) | Azure | `7a659c18-…` | Confirm | `AZEUW1DSENM02` |
-| `AZEUW1TRONM01` | Confirm | Confirm | Test / Dev | Ronin MDM test node (same NET-CORE VNet) | Confirm | Windows Server (confirm) | Azure | `7a659c18-…` | Confirm | `AZEUW1TRONM01` |
-| `AZEUW1GTTESTM01` | Confirm | Public **`51.124.122.213`** | Development (old VNet) | Test VM on SENSEI-DEV-vnet | Confirm | Windows Server (confirm) | Azure | Confirm | Confirm | `AZEUW1GTTESTM01` |
-
-**SMTP (not a Sakura VM — network dependency for email):** `internalsmtprelay.media.global.loc:25`
-
-**Jobs on `AZEUW1PRONM01`**
-
-| Job | Schedule | Purpose |
-|-----|----------|---------|
-| `Sakura.Toolbox.EmailDispatcher.exe` | ~every 5 min (Task Scheduler) | Send queued user notification emails |
-| `SakuraADSync.ps1` | Daily ~20:31 (Task Scheduler) | Nightly Entra group sync + admin email |
-| GAPTEQ / IIS | Always on | V1 Sakura portal |
-
-**V2:** `SakuraV2ADSync.ps1` / `SakuraV2EmailDispatcher` are Task Scheduler–ready; confirm whether they already run on `AZEUW1PRONM01` or another host.
+| # | Env | Subscription ID | Name / note |
+|---|-----|-----------------|-------------|
+| S1 | Dev + UAT | `7a659c18-04dd-412f-9cff-4b2d4e41e937` | NonProd `VDC000006-…` |
+| S2 | Prod | `15039875-d735-4154-b944-f25aa3db1327` | Prod `VDC000007-…` |
 
 ---
 
-## 2. Core hosts in scope (Frontend / API / SQL)
+## Identity (Entra) — check first
 
-### 2.1 Development
-
-| Hostname | FQDN | IP address(es) | Environment | Application / Service | Asset Owner | OS / Runtime | Cloud | Subscription ID | Resource Group | VM / Instance / Resource ID |
-|----------|------|----------------|-------------|------------------------|-------------|--------------|-------|-----------------|----------------|-----------------------------|
-| `azeuw1dswasakura` | `orange-sand-03a59b103.3.azurestaticapps.net` | Private Endpoint `10.19.54.134` | Development | Sakura Frontend (Static Web App) | `Ebad.Uddin@dentsu.com` (PE tag pattern) | PaaS — Angular 20 SPA; Microsoft-managed | Azure | `7a659c18-04dd-412f-9cff-4b2d4e41e937` | `AZ-VDC000006-EUW1-RG-BI-DEV-CENTRAL` | `azeuw1dswasakura` · PE `azeuw1dswasakura_privateendpoint` |
-| `azeuw1dweb01sakura` | `azeuw1dweb01sakura.azurewebsites.net` | Inbound **`20.105.232.38`**, **`20.105.224.52`** (public; no PE) | Development | Sakura Backend API (App Service Linux, Basic) | **`Ebad.Uddin@dentsu.com`** | **Linux** App Service — `DOTNETCORE\|8.0`; platform `109.0.7.36` | Azure | `7a659c18-04dd-412f-9cff-4b2d4e41e937` | `AZ-VDC000006-EUW1-RG-BI-DEV-CENTRAL` | `azeuw1dweb01sakura` · plan `azeuw1dasp01sakura` · MI `6e9c2076-399f-47e3-a640-d3ed6b808489` |
-| `azeuw1senmastersvrdb01` | `azeuw1senmastersvrdb01.database.windows.net` | Private Endpoints approved (see §3); NIC IPs via portal | Development | Azure SQL logical server — database `SakuraV2` | **`patrick.sura@dentsu.com`** | Azure SQL **v12.0** (kind `v12.0`); TLS min **1.2**; Microsoft-managed | Azure | `7a659c18-04dd-412f-9cff-4b2d4e41e937` | **`AZ-VDC000006-EUW1-RG-SENSEI-DEV`** | `azeuw1senmastersvrdb01` · SystemAssigned MI `6ad3cfff-4297-4191-8de6-bc9b3bedc0bf` |
-
-### 2.2 UAT / Test
-
-| Hostname | FQDN | IP address(es) | Environment | Application / Service | Asset Owner | OS / Runtime | Cloud | Subscription ID | Resource Group | VM / Instance / Resource ID |
-|----------|------|----------------|-------------|------------------------|-------------|--------------|-------|-----------------|----------------|-----------------------------|
-| `azeuw1tswasakura` | `lemon-wave-07fa68003.2.azurestaticapps.net` | Private Endpoint `10.19.54.136` | UAT / Test | Sakura Frontend (Static Web App) | `Ebad.Uddin@dentsu.com` (tag pattern) | PaaS — Angular 20 SPA; Microsoft-managed | Azure | `7a659c18-04dd-412f-9cff-4b2d4e41e937` | `AZ-VDC000006-EUW1-RG-BI-TEST-CENTRAL` | `azeuw1tswasakura` · PE `azeuw1tswasakura_privateendpoint` |
-| `azeuw1tweb01sakura` | `azeuw1tweb01sakura.azurewebsites.net` | Inbound **`20.105.216.32`**, **`20.105.243.12`** (public; no PE) | UAT / Test | Sakura Backend API (App Service Linux, Basic) | **`Toniann.Tuson@dentsu.com`** | **Linux** App Service — `DOTNETCORE\|8.0`; platform `109.0.7.36` | Azure | `7a659c18-04dd-412f-9cff-4b2d4e41e937` | `AZ-VDC000006-EUW1-RG-BI-TEST-CENTRAL` | `azeuw1tweb01sakura` · plan `azeuw1tasp01sakura` · MI `6ab7da21-e32a-48f5-a954-4c908bb62184` |
-| `azeuw1tsenmastersvrdb01` | `azeuw1tsenmastersvrdb01.database.windows.net` | Private Endpoint approved (see §3); NIC IP via portal | UAT / Test | Azure SQL logical server — database `SakuraV2` | **`patrick.sura@dentsu.com`** | Azure SQL **v12.0**; TLS min **1.2**; Microsoft-managed | Azure | `7a659c18-04dd-412f-9cff-4b2d4e41e937` | **`AZ-VDC000006-EUW1-RG-SENSEI-TEST`** | `azeuw1tsenmastersvrdb01` · SystemAssigned MI `f42a2df2-bd6d-41eb-ad0f-f9debdf581d3` |
-
-### 2.3 Production
-
-| Hostname | FQDN | IP address(es) | Environment | Application / Service | Asset Owner | OS / Runtime | Cloud | Subscription ID | Resource Group | VM / Instance / Resource ID |
-|----------|------|----------------|-------------|------------------------|-------------|--------------|-------|-----------------|----------------|-----------------------------|
-| `azeuw1pswasakura` | `green-stone-0e7ff2e03.2.azurestaticapps.net` | Private Endpoint `10.19.50.132` | Production | Sakura Frontend (Static Web App) | `Ebad.Uddin@dentsu.com` (tag pattern) | PaaS — Angular 20 SPA; Microsoft-managed | Azure | `15039875-d735-4154-b944-f25aa3db1327` | `AZ-VDC000007-EUW1-RG-BI-PROD-CENTRAL` | `azeuw1pswasakura` · PE `azeuw1pswasakura_Privateendpoint` |
-| `azeuw1pweb01sakura` | `azeuw1pweb01sakura-awfefugdgubjhygd.westeurope-01.azurewebsites.net` | Inbound **`20.105.216.55`**, **`20.105.224.134`** (public; no PE) | Production | Sakura Backend API (App Service Linux, Basic) | **`Toniann.Tuson@dentsu.com`** | **Linux** App Service — `DOTNETCORE\|8.0`; platform `109.0.7.36` | Azure | `15039875-d735-4154-b944-f25aa3db1327` | `AZ-VDC000007-EUW1-RG-BI-PROD-CENTRAL` | `azeuw1pweb01sakura` · plan `azeuw1pasp01sakura` · MI `2c574314-a14a-4dbd-b99b-325905ed5afc` |
-| `azeuw1psenmastersvrdb01` | `azeuw1psenmastersvrdb01.database.windows.net` | **TBD — need Prod portal JSON** | Production | Azure SQL — database `SakuraV2` | **TBD** (expected Sensei pattern) | Azure SQL PaaS (confirm version) | Azure | Confirm (likely Prod sub) | **TBD** (likely `…-RG-SENSEI-PROD` pattern) | `azeuw1psenmastersvrdb01` |
+| # | Item | Value |
+|---|------|--------|
+| I1 | Tenant | `6e8992ec-76d5-4ea5-8eae-b0c5e558749a` |
+| I2 | App name | **Sakura** |
+| I3 | Client ID | `e73f4528-2ceb-40e3-8e4a-d72287adb4c5` |
+| I4 | Service principal | `faeacbe2-e6f7-453d-81b4-c0f1d691b565` |
+| I5 | API scope | `api://e73f4528-2ceb-40e3-8e4a-d72287adb4c5/access_as_user` |
 
 ---
 
-## 3. Azure SQL — portal-confirmed detail (Dev & UAT)
+## Network shared
 
-### 3.1 Dev — `azeuw1senmastersvrdb01`
-
-| Field | Value |
-|-------|--------|
-| Resource ID | `/subscriptions/7a659c18-04dd-412f-9cff-4b2d4e41e937/resourceGroups/AZ-VDC000006-EUW1-RG-SENSEI-DEV/providers/Microsoft.Sql/servers/azeuw1senmastersvrdb01` |
-| Location | West Europe |
-| Kind / version | `v12.0` / `12.0` |
-| State | Ready |
-| FQDN | `azeuw1senmastersvrdb01.database.windows.net` |
-| `publicNetworkAccess` | **Enabled** |
-| `minimalTlsVersion` | **1.2** |
-| `restrictOutboundNetworkAccess` | Disabled |
-| Azure AD admin | Group `UG-GLO-BI-ADMIN` (`38777532-1309-4416-847d-a8462a564a4c`) |
-| SQL admin login (name only) | `sqladminuser` |
-| System-assigned identity | `6ad3cfff-4297-4191-8de6-bc9b3bedc0bf` |
-| Owner tag | `patrick.sura@dentsu.com` |
-| FinanceContact tag | `patrick.sura@dentsu.com` |
-| Environment tag | Development |
-| Criticality tag | Tier3-Non-Critical |
-| Project tag | Finance Project SENSEI |
-| DataClassification | Internal |
-
-**Approved private endpoint connections**
-
-| Connection name | Private Endpoint resource | Endpoint subscription |
-|-----------------|---------------------------|------------------------|
-| `azeuw1tsenadf01.ASQL_PE_Masterdata-…` | `azeuw1tsenadf01.ASQL_PE_Masterdata` in `vnet-769612ff-WestEurope-34-rg` | `769612ff-d354-45f7-ae62-a2a1f39bac12` |
-| `sensei-dbpvtendpoint-…` | `sensei-dbpvtendpoint` in `AZ-VDC000006-EUW1-RG-SENSEI-DEV` | `7a659c18-04dd-412f-9cff-4b2d4e41e937` |
-| `VDH-ProcessDB-Collibra-Dev-…` | `VDH-ProcessDB-Collibra-Dev` in `vdhdev-collibra-aks-rg` | `f9eae7ae-abbb-4786-81cc-8df24d7b6bf9` |
-
-### 3.2 UAT / Test — `azeuw1tsenmastersvrdb01`
-
-| Field | Value |
-|-------|--------|
-| Resource ID | `/subscriptions/7a659c18-04dd-412f-9cff-4b2d4e41e937/resourceGroups/AZ-VDC000006-EUW1-RG-SENSEI-TEST/providers/Microsoft.Sql/servers/azeuw1tsenmastersvrdb01` |
-| Location | West Europe |
-| Kind / version | `v12.0` / `12.0` |
-| State | Ready |
-| FQDN | `azeuw1tsenmastersvrdb01.database.windows.net` |
-| `publicNetworkAccess` | **Enabled** |
-| `minimalTlsVersion` | **1.2** |
-| `restrictOutboundNetworkAccess` | Disabled |
-| Azure AD admin | Group `#UG-DE-FinanceBi-ADM-USR` (`23d5d560-9590-4010-8ec8-745b476c5a30`) |
-| SQL admin login (name only) | `sqladminuser` |
-| System-assigned identity | `f42a2df2-bd6d-41eb-ad0f-f9debdf581d3` |
-| Owner tag | `patrick.sura@dentsu.com` |
-| FinanceContact tag | `patrick.sura@dentsu.com` |
-| Environment tag | Test |
-| Criticality tag | Tier2-Operational |
-| Project tag | Finance Project SENSEI |
-| DataClassification | Internal |
-
-**Approved private endpoint connections**
-
-| Connection name | Private Endpoint resource | Endpoint subscription |
-|-----------------|---------------------------|------------------------|
-| `sensei-test-dbpvtendpoint-…` | `sensei-test-dbpvtendpoint` in `AZ-VDC000006-EUW1-RG-SENSEI-TEST` | `7a659c18-04dd-412f-9cff-4b2d4e41e937` |
-
-### 3.3 Exposure note for Defender / Wiz
-
-Both Dev and UAT SQL servers show **`publicNetworkAccess: Enabled`** even though private endpoints exist. For VA purposes:
-
-1. Treat SQL as **in scope** for cloud vulnerability / exposure review.
-2. Validate **firewall rules** / “Deny public network access” effective state in portal (not assumed from PE alone).
-3. Browser never connects to SQL; Sakura App Service APIs are the intended application path.
+| # | Item | Value |
+|---|------|--------|
+| N1 | VNet | `AZ-VDC000006-EUW1-NET-CORE` |
+| N2 | Subnet | `AZ-VDC000006-EUW1-SNET-LZ-CORE-INTERNALSUBNET1` |
+| N3 | Networking RG | `AZ-VDC000006-EUW1-RG-LZ-NETWORKING` |
+| N4 | SMTP relay (emails) | `internalsmtprelay.media.global.loc` port **25** |
 
 ---
 
-## 4. App Service APIs — portal-confirmed detail (Dev / UAT / Prod)
+## Windows VMs — emails + nightly scripts (do not miss)
 
-All three are **Linux** App Services (`kind: app,linux`), runtime **`DOTNETCORE|8.0`**, SKU **Basic**, **`publicNetworkAccess: Enabled`**, **no private endpoints**, **`httpsOnly: true`**.
+These are the **IaaS hosts** Security / Network / Defender need for script + email coverage.
 
-| Field | Dev `azeuw1dweb01sakura` | UAT `azeuw1tweb01sakura` | Prod `azeuw1pweb01sakura` |
-|-------|--------------------------|--------------------------|---------------------------|
-| FQDN | `azeuw1dweb01sakura.azurewebsites.net` | `azeuw1tweb01sakura.azurewebsites.net` | `azeuw1pweb01sakura-awfefugdgubjhygd.westeurope-01.azurewebsites.net` |
-| Subscription | `7a659c18-04dd-412f-9cff-4b2d4e41e937` | same | `15039875-d735-4154-b944-f25aa3db1327` |
-| Resource Group | `AZ-VDC000006-EUW1-RG-BI-DEV-CENTRAL` | `AZ-VDC000006-EUW1-RG-BI-TEST-CENTRAL` | `AZ-VDC000007-EUW1-RG-BI-PROD-CENTRAL` |
-| App Service Plan | `azeuw1dasp01sakura` | `azeuw1tasp01sakura` | `azeuw1pasp01sakura` |
-| State | Running | Running | Running |
-| OS / runtime | Linux · `DOTNETCORE\|8.0` | Linux · `DOTNETCORE\|8.0` | Linux · `DOTNETCORE\|8.0` |
-| Platform version | `109.0.7.36` | `109.0.7.36` | `109.0.7.36` |
-| Inbound IPv4 | `20.105.232.38`, `20.105.224.52` | `20.105.216.32`, `20.105.243.12` | `20.105.216.55`, `20.105.224.134` |
-| Inbound IPv6 | `2603:1020:206:6::24` | `2603:1020:206:8::1d` | `2603:1020:206:5::67` |
-| System-assigned MI | `6e9c2076-399f-47e3-a640-d3ed6b808489` | `6ab7da21-e32a-48f5-a954-4c908bb62184` | `2c574314-a14a-4dbd-b99b-325905ed5afc` |
-| Owner tag | `Ebad.Uddin@dentsu.com` | `Toniann.Tuson@dentsu.com` | `Toniann.Tuson@dentsu.com` |
-| FinanceContact tag | `Pralay.Mistry@dentsu.com` | `Ebad.Uddin@dentsu.com` | `Ebad.Uddin@dentsu.com` |
-| Criticality | Tier3-Non-Critical | Tier2-Operational | Tier2-Operational |
-| DataClassification | Internal | Confidential | Confidential |
-| sshEnabled | true | true | null (not set) |
-| alwaysOn | true | true | false |
-| App Insights | — | `azeuw1tweb01sakura` | `azeuw1pweb01sakura` |
+| # | Hostname | FQDN | IP (known) | Env | What runs on it | OS | Notes |
+|---|----------|------|------------|-----|-----------------|----|-------|
+| V1 | **`AZEUW1PRONM01`** | `AZEUW1PRONM01.emea.media.global.loc` | confirm in portal | **Production** | **GAPTEQ portal (IIS)** · **Sakura.Toolbox.EmailDispatcher** (every ~5 min) · **SakuraADSync.ps1** nightly (~20:31) via Task Scheduler | **Windows Server 2019** (NT 10.0.17763) | **Primary email + AD sync VM.** Script path: `C:\Installations\SakuraADSyncer\SakuraADSync.ps1` |
+| V2 | `AZEUW1DSENM01` | `azeuw1dsenm01` / `….emea.media.global.loc` | confirm | Development | Sensei Dev node; V1 portal URL pattern `https://azeuw1dsenm01/GAPTEQForms/Sakura/` | Windows Server (confirm) | Dev GAPTEQ path |
+| V3 | `AZEUW1DSENM02` | confirm | Private **`10.19.54.140`** (no public IP) | Development | Sensei Dev node in `AZ-VDC000006-EUW1-NET-CORE` | Windows Server (confirm) | Used for FE PE / DNS testing |
+| V4 | `AZEUW1TRONM01` | confirm | confirm | Test / Dev | Ronin MDM test node (same NET-CORE VNet) | Windows Server (confirm) | Related jump / test VM |
+| V5 | `AZEUW1GTTESTM01` | confirm | Public **`51.124.122.213`** | Development (old VNet) | Test VM on `…-SENSEI-DEV-vnet` | Windows Server (confirm) | Older PE test path |
 
-**Outbound IPs:** each App Service has a large Microsoft-managed outbound pool (see portal `outboundIpAddresses` / `possibleOutboundIpAddresses`). Primary inbound IPs above are the ones to match first in Defender/Wiz for public exposure.
+**Jobs on Prod VM `AZEUW1PRONM01` (linear)**
+
+| Job | Schedule | Technology | Sends mail via |
+|-----|----------|------------|----------------|
+| `Sakura.Toolbox.EmailDispatcher.exe` | ~every 5 minutes (Task Scheduler) | .NET 6 console | SMTP `internalsmtprelay.media.global.loc:25` |
+| `SakuraADSync.ps1` | Daily ~20:31 (Task Scheduler) | PowerShell + Graph | Admin alert email after run |
+| GAPTEQ / IIS portal | Always on | Windows IIS | — |
+
+**V2 note:** `SakuraV2ADSync.ps1` / `SakuraV2EmailDispatcher` are designed for Task Scheduler (or ADO). Confirm whether V2 jobs already run on **`AZEUW1PRONM01`** or another host — treat **V1** as confirmed on PRONM01; treat **V2 host** as confirm-in-portal if different.
 
 ---
 
-## 5. Prod Key Vault — portal-confirmed
+## Walk the stack — Development
 
-| Field | Value |
-|-------|--------|
-| Name | `azeuw1pkvsakura` |
-| Vault URI | `https://azeuw1pkvsakura.vault.azure.net/` |
-| Subscription | `15039875-d735-4154-b944-f25aa3db1327` |
-| Resource Group | `AZ-VDC000007-EUW1-RG-BI-PROD-CENTRAL` |
-| Location | West Europe |
-| SKU | Standard |
-| Owner tag | **`Toniann.Tuson@dentsu.com`** |
-| FinanceContact | `Ebad.Uddin@dentsu.com` |
-| Environment | Production |
-| Criticality | Tier2-Operational |
-| DataClassification | **Confidential** |
-| Soft delete | Enabled · 90 days |
-| RBAC authorization | `enableRbacAuthorization: true` |
-| Network ACLs | `defaultAction: Allow`, `bypass: None`, **no IP rules**, **no VNet rules** |
+| # | Type | Name | FQDN / endpoint | IP / access | RG | Owner | OS / runtime |
+|---|------|------|-----------------|-------------|----|-------|--------------|
+| D1 | Frontend SWA | `azeuw1dswasakura` | `orange-sand-03a59b103.3.azurestaticapps.net` | PE `10.19.54.134` | `…-RG-BI-DEV-CENTRAL` | Ebad (PE tag) | Angular 20 PaaS |
+| D2 | FE Private Endpoint | `azeuw1dswasakura_privateendpoint` | — | `10.19.54.134` | `…-RG-BI-DEV-CENTRAL` | Ebad | N/A |
+| D3 | Backend API | `azeuw1dweb01sakura` | `azeuw1dweb01sakura.azurewebsites.net` | Public inbound `20.105.232.38`, `20.105.224.52` | `…-RG-BI-DEV-CENTRAL` | **Ebad.Uddin@dentsu.com** | **Linux · DOTNETCORE\|8.0** |
+| D4 | App Service Plan | `azeuw1dasp01sakura` | — | — | `…-RG-BI-DEV-CENTRAL` | — | Linux Basic |
+| D5 | API MI | SystemAssigned | — | principal `6e9c2076-399f-47e3-a640-d3ed6b808489` | same as D3 | — | — |
+| D6 | SQL server | `azeuw1senmastersvrdb01` | `azeuw1senmastersvrdb01.database.windows.net` | PEs yes · **publicNetworkAccess=Enabled** | **`…-RG-SENSEI-DEV`** | **patrick.sura@dentsu.com** | Azure SQL **v12.0** · TLS 1.2 |
+| D7 | SQL DB | `SakuraV2` | on D6 | — | same as D6 | same | — |
+| D8 | SQL PE | `sensei-dbpvtendpoint` | — | NIC IP in portal | `…-RG-SENSEI-DEV` | — | — |
+| D9 | SQL PE (cross-sub) | `azeuw1tsenadf01.ASQL_PE_Masterdata` | — | sub `769612ff-…` | `vnet-769612ff-WestEurope-34-rg` | — | — |
+| D10 | SQL PE (cross-sub) | `VDH-ProcessDB-Collibra-Dev` | — | sub `f9eae7ae-…` | `vdhdev-collibra-aks-rg` | — | — |
+| D11 | Key Vault | `azeuw1dkvsakura` | `azeuw1dkvsakura.vault.azure.net` | confirm ACL | `…-RG-BI-DEV-CENTRAL` | confirm | Key Vault |
+| D12 | ADF | `azeuw1dadfsakura` | — | — | `…-RG-BI-DEV-CENTRAL` | — | ADF PaaS |
+| D13 | SQL AAD admin | `UG-GLO-BI-ADMIN` | — | sid `38777532-…` | — | — | Entra group |
 
-**Wiz / Defender note:** network ACL default Allow with empty IP/VNet rules means the vault is **not network-restricted** at the firewall layer (access still depends on RBAC / access policies). Flag for exposure review.
-
----
-
-## 6. Supporting cloud assets (recommended for Wiz)
-
-| Hostname / Name | FQDN / Notes | Environment | Service | Cloud | Subscription ID | Resource Group | Owner (where known) |
-|-----------------|--------------|-------------|---------|-------|-----------------|----------------|---------------------|
-| `azeuw1dswasakura_privateendpoint` | IP `10.19.54.134` | Development | Private Endpoint (FE) | Azure | `7a659c18-…` | `AZ-VDC000006-EUW1-RG-BI-DEV-CENTRAL` | — |
-| `azeuw1tswasakura_privateendpoint` | IP `10.19.54.136` | UAT | Private Endpoint (FE) | Azure | `7a659c18-…` | `AZ-VDC000006-EUW1-RG-BI-TEST-CENTRAL` | — |
-| `azeuw1pswasakura_Privateendpoint` | IP `10.19.50.132` | Production | Private Endpoint (FE) | Azure | `15039875-…` | `AZ-VDC000007-EUW1-RG-BI-PROD-CENTRAL` | — |
-| `sensei-dbpvtendpoint` | PE for Dev SQL | Development | Private Endpoint (SQL) | Azure | `7a659c18-…` | `AZ-VDC000006-EUW1-RG-SENSEI-DEV` | — |
-| `sensei-test-dbpvtendpoint` | PE for UAT SQL | UAT | Private Endpoint (SQL) | Azure | `7a659c18-…` | `AZ-VDC000006-EUW1-RG-SENSEI-TEST` | — |
-| `azeuw1dkvsakura` | `azeuw1dkvsakura.vault.azure.net` | Development | Key Vault | Azure | `7a659c18-…` | `AZ-VDC000006-EUW1-RG-BI-DEV-CENTRAL` | Confirm portal |
-| `azeuw1tkvcentral` | Key Vault | UAT | Key Vault | Azure | `7a659c18-…` | `AZ-VDC000006-EUW1-RG-BI-TEST-CENTRAL` | Confirm portal |
-| **`azeuw1pkvsakura`** | `azeuw1pkvsakura.vault.azure.net` | Production | Key Vault | Azure | `15039875-…` | `AZ-VDC000007-EUW1-RG-BI-PROD-CENTRAL` | **`Toniann.Tuson@dentsu.com`** |
-| `azeuw1dadfsakura` | Data Factory | Development | ADF (V2 ref imports) | Azure | `7a659c18-…` | `AZ-VDC000006-EUW1-RG-BI-DEV-CENTRAL` | — |
-| `azeuw1tadfsakura` / `azeuw1tadfcentral` | Data Factory | UAT | ADF | Azure | `7a659c18-…` | `AZ-VDC000006-EUW1-RG-BI-TEST-CENTRAL` | — |
-| `azeuw1tswasakuragate` | `ambitious-sand-04a627c03.7.azurestaticapps.net` | UAT | Temporary public VPN-check SWA | Azure | `7a659c18-…` | `AZ-VDC000006-EUW1-RG-BI-TEST-CENTRAL` | — |
-
-**Shared networking**
-
-| Item | Value |
-|------|--------|
-| VNet (FE PE pattern) | `AZ-VDC000006-EUW1-NET-CORE` |
-| Subnet | `AZ-VDC000006-EUW1-SNET-LZ-CORE-INTERNALSUBNET1` |
-| Networking RG | `AZ-VDC000006-EUW1-RG-LZ-NETWORKING` |
+**Dev subscription:** S1 · **Dev app RG:** `AZ-VDC000006-EUW1-RG-BI-DEV-CENTRAL` · **Dev SQL RG:** `AZ-VDC000006-EUW1-RG-SENSEI-DEV`
 
 ---
 
-## 7. Optional same-RG assets (confirm if in VA boundary)
+## Walk the stack — UAT / Test
 
-Present in Test BI central RG documentation — include only if InfoSec scopes the full RG:
+| # | Type | Name | FQDN / endpoint | IP / access | RG | Owner | OS / runtime |
+|---|------|------|-----------------|-------------|----|-------|--------------|
+| U1 | Frontend SWA | `azeuw1tswasakura` | `lemon-wave-07fa68003.2.azurestaticapps.net` | PE `10.19.54.136` | `…-RG-BI-TEST-CENTRAL` | Ebad (tag pattern) | Angular 20 PaaS |
+| U2 | FE Private Endpoint | `azeuw1tswasakura_privateendpoint` | — | `10.19.54.136` | `…-RG-BI-TEST-CENTRAL` | — | N/A |
+| U3 | Backend API | `azeuw1tweb01sakura` | `azeuw1tweb01sakura.azurewebsites.net` | Public inbound `20.105.216.32`, `20.105.243.12` | `…-RG-BI-TEST-CENTRAL` | **Toniann.Tuson@dentsu.com** | **Linux · DOTNETCORE\|8.0** |
+| U4 | App Service Plan | `azeuw1tasp01sakura` | — | — | `…-RG-BI-TEST-CENTRAL` | — | Linux Basic |
+| U5 | API MI | SystemAssigned | — | principal `6ab7da21-e32a-48f5-a954-4c908bb62184` | same as U3 | — | — |
+| U6 | SQL server | `azeuw1tsenmastersvrdb01` | `azeuw1tsenmastersvrdb01.database.windows.net` | PE yes · **publicNetworkAccess=Enabled** | **`…-RG-SENSEI-TEST`** | **patrick.sura@dentsu.com** | Azure SQL **v12.0** · TLS 1.2 |
+| U7 | SQL DB | `SakuraV2` | on U6 | — | same as U6 | same | — |
+| U8 | SQL PE | `sensei-test-dbpvtendpoint` | — | NIC IP in portal | `…-RG-SENSEI-TEST` | — | — |
+| U9 | Key Vault | `azeuw1tkvcentral` | `azeuw1tkvcentral.vault.azure.net` | confirm ACL | `…-RG-BI-TEST-CENTRAL` | confirm | Key Vault |
+| U10 | ADF | `azeuw1tadfsakura` / `azeuw1tadfcentral` | — | — | `…-RG-BI-TEST-CENTRAL` | — | ADF PaaS |
+| U11 | VPN gate SWA (temp) | `azeuw1tswasakuragate` | `ambitious-sand-04a627c03.7.azurestaticapps.net` | **Public** (no PE) | `…-RG-BI-TEST-CENTRAL` | — | SWA PaaS |
+| U12 | SQL AAD admin | `#UG-DE-FinanceBi-ADM-USR` | — | sid `23d5d560-…` | — | — | Entra group |
+| U13 | App Insights | `azeuw1tweb01sakura` | — | — | `…-RG-BI-TEST-CENTRAL` | — | — |
 
-- Storage `azeuw1tstrgcentral01`
-- Service Bus `azeuw1tsbnscentral`
-- Function Apps `azeuw1tfunc01coupa`, `azeuw1tfuncalert`
-- Logic App `azeuw1tlgalert`
+**Optional same Test RG (confirm if in scope):** `azeuw1tstrgcentral01` · `azeuw1tsbnscentral` · `azeuw1tfunc01coupa` · `azeuw1tfuncalert` · `azeuw1tlgalert`
 
----
-
-## 8. Outstanding for complete VA register
-
-| Gap | Status |
-|-----|--------|
-| Prod SQL portal JSON (`azeuw1psenmastersvrdb01`) — RG, owner, PEs, `publicNetworkAccess` | **Open** |
-| VM portal JSON for `AZEUW1PRONM01` (sub, RG, private IP, Owner tag) | Open — hostname/FQDN/OS confirmed from ops docs |
-| Confirm V2 EmailDispatcher / AD sync Task Scheduler host | Open — V1 confirmed on `AZEUW1PRONM01` |
-| SQL PE NIC private IP addresses | Open |
-| SQL firewall / Deny public internet effective rules | Open (`publicNetworkAccess=Enabled` on Dev+UAT) |
-| Dev / UAT Key Vault portal JSON (network ACLs) | Open — Prod KV confirmed |
-| App Service inbound / outbound IPs | **Closed** for Dev/UAT/Prod (see §4) |
-| Prod Key Vault | **Closed** — `azeuw1pkvsakura` |
-| SWA portal JSON (Owner tags) | Open |
-| Extra Entra SPA URI `delightful-sand-0e0eb7803.2.azurestaticapps.net` | Confirm if live SWA in scope |
-| Legacy Gapteq / V1 hosts on same Entra app | **In scope via VM `AZEUW1PRONM01`** for email/sync |
+**UAT subscription:** S1 · **UAT app RG:** `AZ-VDC000006-EUW1-RG-BI-TEST-CENTRAL` · **UAT SQL RG:** `AZ-VDC000006-EUW1-RG-SENSEI-TEST`
 
 ---
 
-## 9. Suggested reply text (copy for InfoSec)
+## Walk the stack — Production
 
-> Please find the Sakura host inventory for vulnerability assessment / Defender + Wiz coverage.  
-> Scope includes Azure PaaS (Static Web Apps, App Service Linux .NET 8, Azure SQL, Key Vault) **and Windows VMs** used for email + nightly AD sync.  
-> Primary automation VM: **`AZEUW1PRONM01.emea.media.global.loc`** (Windows Server 2019) — GAPTEQ portal, EmailDispatcher (~5 min), SakuraADSync.ps1 (~20:31). Related Dev/test VMs: `AZEUW1DSENM01`, `AZEUW1DSENM02` (`10.19.54.140`), `AZEUW1TRONM01`, `AZEUW1GTTESTM01`.  
-> SMTP relay: `internalsmtprelay.media.global.loc:25`.  
-> APIs are public Linux App Services; Prod Key Vault `azeuw1pkvsakura` ACL default Allow. Prod SQL portal export still outstanding.
+| # | Type | Name | FQDN / endpoint | IP / access | RG | Owner | OS / runtime |
+|---|------|------|-----------------|-------------|----|-------|--------------|
+| P1 | Frontend SWA | `azeuw1pswasakura` | `green-stone-0e7ff2e03.2.azurestaticapps.net` | PE `10.19.50.132` | `…-RG-BI-PROD-CENTRAL` | Ebad (tag pattern) | Angular 20 PaaS |
+| P2 | FE Private Endpoint | `azeuw1pswasakura_Privateendpoint` | — | `10.19.50.132` | `…-RG-BI-PROD-CENTRAL` | — | N/A |
+| P3 | Backend API | `azeuw1pweb01sakura` | `azeuw1pweb01sakura-awfefugdgubjhygd.westeurope-01.azurewebsites.net` | Public inbound `20.105.216.55`, `20.105.224.134` | `…-RG-BI-PROD-CENTRAL` | **Toniann.Tuson@dentsu.com** | **Linux · DOTNETCORE\|8.0** |
+| P4 | App Service Plan | `azeuw1pasp01sakura` | — | — | `…-RG-BI-PROD-CENTRAL` | — | Linux Basic |
+| P5 | API MI | SystemAssigned | — | principal `2c574314-a14a-4dbd-b99b-325905ed5afc` | same as P3 | — | — |
+| P6 | SQL server | `azeuw1psenmastersvrdb01` | `azeuw1psenmastersvrdb01.database.windows.net` | **TBD — need portal JSON** | **TBD** | **TBD** | Azure SQL (confirm) |
+| P7 | SQL DB | `SakuraV2` | on P6 | — | same as P6 | — | — |
+| P8 | Key Vault | `azeuw1pkvsakura` | `azeuw1pkvsakura.vault.azure.net` | **ACL default Allow** (no IP/VNet rules) | `…-RG-BI-PROD-CENTRAL` | **Toniann.Tuson@dentsu.com** | Key Vault Standard |
+| P9 | App Insights | `azeuw1pweb01sakura` | — | — | `…-RG-BI-PROD-CENTRAL` | — | — |
+| P10 | ADF MI (DB grants) | `azeuw1padfsakura` | — | name in DB scripts; confirm ADF resource | — | — | — |
+
+**Prod subscription:** S2 · **Prod app RG:** `AZ-VDC000007-EUW1-RG-BI-PROD-CENTRAL`
 
 ---
 
-## Related internal references
+## Who owns what (quick)
 
-- **`Docs/SAKURA_VA_HOST_LIST_SHORT.md`** — short linear checklist for Security / Network / Identity
-- `Docs/network-architecture/06-resources.html`
-- `Docs/SAKURA_NETWORK_OPTIONS_FE_API_MYAPPS.md`
-- `ARCHITECTURE.md`
-- `Docs/EUC-DNS-Request-Full-Ticket-Text.md`
-- `Docs/Azure-Static-Web-App-Prod-Pipeline-Config.md`
+| Area | Owner email |
+|------|-------------|
+| Dev API | `Ebad.Uddin@dentsu.com` |
+| UAT API / Prod API / Prod KV | `Toniann.Tuson@dentsu.com` |
+| Dev SQL / UAT SQL | `patrick.sura@dentsu.com` |
+| Finance contact (UAT/Prod API + Prod KV) | `Ebad.Uddin@dentsu.com` |
+| Prod SQL | TBD |
+
+---
+
+## Security / Network / Identity — what to do
+
+| Team | Walk these IDs | Check |
+|------|----------------|-------|
+| **Identity** | I1–I5, D13, U12, D5, U5, P5, **V1** | Entra app Sakura, CA, assignment, MIs, Graph perms for AD sync on VM |
+| **Network** | N1–N4, D1–D2, U1–U2, P1–P2, D8–D10, U8, API inbound IPs, **V1–V5** | PE coverage, public API exposure, SQL PEs, VNet, SMTP relay reachability from VMs |
+| **Security / Wiz / Defender** | All D*, U*, P*, **V*** + S1/S2 | Asset coverage; **include Windows VMs** (OS patches); flag public APIs, SQL public access, Prod KV ACL Allow |
+| **Cloud** | Fill **P6** Prod SQL; confirm V2 job host | Last hard gaps |
+
+---
+
+## Exposure flags (do not miss)
+
+1. **APIs are public** in Dev, UAT, Prod (no PE).  
+2. **Dev + UAT SQL** have PEs but `publicNetworkAccess = Enabled`.  
+3. **Prod KV** `azeuw1pkvsakura` has network ACL **Allow** with no IP/VNet rules.  
+4. **FE** is private today (PE + VPN).  
+5. **Prod SQL** details still outstanding.  
+6. **Windows VM `AZEUW1PRONM01`** runs EmailDispatcher + nightly AD sync — must be in Defender for Servers / Wiz VM coverage.  
+7. SMTP dependency: `internalsmtprelay.media.global.loc:25` (corp relay, not a Sakura-owned host).
+
+---
+
+## One-line reply (copy/paste)
+
+> Sakura VA scope: Azure PaaS (FE SWA, public Linux .NET 8 APIs, Azure SQL, Key Vault) **plus Windows VMs** for email/nightly jobs — primary Prod VM **`AZEUW1PRONM01.emea.media.global.loc`** (Windows Server 2019) running EmailDispatcher + SakuraADSync. NonProd sub `7a659c18-…`, Prod sub `15039875-…`. Entra app Sakura `e73f4528-…`. Please validate Defender/Wiz coverage; Prod SQL portal export pending.
